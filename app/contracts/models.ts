@@ -151,6 +151,7 @@ export type SubmitJobRequest = z.infer<typeof SubmitJobRequestSchema>;
 
 export const VoiceSchema = z.object({
     "accent": z.union([z.null(), z.string()]).optional(),
+    "created_at": z.union([z.coerce.date(), z.null()]).optional(),
     "default_params": z.record(z.string(), z.any()).optional(),
     "is_custom": z.boolean().optional(),
     "language": z.string(),
