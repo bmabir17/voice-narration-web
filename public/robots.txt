@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
-Disallow: /app/
-Sitemap: https://voicenarration.dev/sitemap.xml
+Disallow: /voice-narration/app/
+Sitemap: https://bmabir17.github.io/voice-narration/sitemap.xml

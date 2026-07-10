@@ -6,6 +6,9 @@ import { seoMatrixPaths } from "./app/content/solutions/seo-matrix";
 // SEO + GitHub Pages linchpin; migrate to Cloudflare/Vercel (flip ssr:true) only when SSR is needed.
 export default {
   ssr: false,
+  // Must match Vite `base` — the app is hosted at https://bmabir17.github.io/voice-narration/.
+  // Set both back to "/" when moving to the apex domain (voicenarration.dev).
+  basename: "/voice-narration/",
   async prerender() {
     return [
       "/", "/pricing", "/demo",
