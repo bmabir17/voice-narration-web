@@ -11,7 +11,9 @@ export default function Login() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
-    const redirectTo = `${window.location.origin}/auth/callback`;
+    // BASE_URL includes the subpath (/voice-narration-web/) and a trailing slash, so the magic-link
+    // redirect lands inside the app. window.location.origin alone would drop the base path → dead URL.
+    const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}auth/callback`;
     const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });
     if (error) setErr(error.message); else setSent(true);
   }
