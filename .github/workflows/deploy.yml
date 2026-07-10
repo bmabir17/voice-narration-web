@@ -1,0 +1,45 @@
+# Deploys this frontend to GitHub Pages. This file lives in the monorepo at frontend/.github/ and is
+# carried to the ROOT of the public voice-narration-web repo via `git subtree push --prefix=frontend`,
+# where it runs on every push to main. (In the monorepo — a private repo — Pages is unavailable, so
+# this workflow only ever executes in the public mirror.)
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      # These are publishable (they ship in the public bundle; RLS + signature checks are the guard),
+      # so we default them here to keep the deploy self-sufficient. Set repo Variables of the same
+      # name to override (e.g. when pointing a fork at a different Supabase project).
+      - run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || 'https://oujiapafuibnfesmekfs.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY || 'sb_publishable_doPX-mTepu_6jSJpUZEtLg_fZ5kWrhZ' }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://oujiapafuibnfesmekfs.functions.supabase.co' }}
+      # postbuild flattens the basename-nested prerender output + copies __spa-fallback.html → 404.html.
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/client
+      - id: deploy
+        uses: actions/deploy-pages@v4
