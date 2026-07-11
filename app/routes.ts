@@ -15,6 +15,7 @@ export default [
       route("narrate", "routes/app.narrate.tsx"),
       route("voices", "routes/app.voices.tsx"),
       route("voices/new", "routes/app.voices.new.tsx"),
+      route("billing", "routes/app.billing.tsx"),
     ]),
   ]),
 ] satisfies RouteConfig;

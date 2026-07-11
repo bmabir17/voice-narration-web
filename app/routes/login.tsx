@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "~/lib/supabase";
+import { Turnstile } from "~/components/Turnstile";
 
 export function meta() { return [{ title: "Sign in — Voice Narration" }]; }
 
@@ -7,6 +8,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string>("");
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -14,7 +16,11 @@ export default function Login() {
     // BASE_URL includes the subpath (/voice-narration-web/) and a trailing slash, so the magic-link
     // redirect lands inside the app. window.location.origin alone would drop the base path → dead URL.
     const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}auth/callback`;
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });
+    // captchaToken is passed only when present; requires CAPTCHA (Turnstile) enabled in Supabase Auth.
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: redirectTo, ...(captchaToken ? { captchaToken } : {}) },
+    });
     if (error) setErr(error.message); else setSent(true);
   }
 
@@ -27,6 +33,7 @@ export default function Login() {
         <form onSubmit={submit} style={{ display: "grid", gap: "0.8rem" }}>
           <input type="email" required placeholder="you@example.com" value={email}
                  onChange={(e) => setEmail(e.target.value)} style={{ padding: "0.6rem" }} />
+          <Turnstile onVerify={setCaptchaToken} />
           <button style={{ padding: "0.6rem 1.2rem" }}>Send magic link</button>
           {err && <p style={{ color: "crimson" }}>{err}</p>}
         </form>

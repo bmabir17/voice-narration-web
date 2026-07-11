@@ -22,6 +22,24 @@ async function request<T>(path: string, init: RequestInit = {}, retry = true): P
   return res.json() as Promise<T>;
 }
 
+export interface UsageResponse {
+  period: string;
+  tier: string;
+  subscription_status: string;
+  current_period_end: string | null;
+  minutes_used: number;
+  minutes_limit: number;
+  jobs_count: number;
+  api_access: boolean;
+  max_custom_voices: number;
+}
+
+export interface DemoVoice {
+  voice_id: string;
+  language: string;
+  accent: string | null;
+}
+
 export interface SubmitJobInput {
   language: string;
   voice_id: string;
@@ -38,7 +56,19 @@ export const api = {
   listJobs: (status?: string) => request(`/v1-jobs${status ? `?status=${status}` : ""}`),
   listVoices: () => request<{ voices: unknown[] }>("/v1-voices"),
   deleteVoice: (id: string) => request(`/v1-voices/${id}`, { method: "DELETE" }),
-  usage: () => request("/v1-usage"),
+  usage: () => request<UsageResponse>("/v1-usage"),
+
+  // Billing (server-side Lemon Squeezy). checkout → hosted checkout URL; portal → manage/cancel URL.
+  checkout: (tier: string) =>
+    request<{ url: string }>("/v1-billing/checkout", { method: "POST", body: JSON.stringify({ tier }) }),
+  billingPortal: () => request<{ url: string }>("/v1-billing/portal"),
+
+  // Public demo playground (no auth) — gated by Turnstile + per-IP rate limits server-side.
+  demoPresets: () => request<{ voices: DemoVoice[] }>("/v1-demo"),
+  demoSubmit: (input: { text: string; voice_id: string; turnstile_token: string }) =>
+    request<{ job_id: string; status: string }>("/v1-demo", { method: "POST", body: JSON.stringify(input) }),
+  demoResult: (jobId: string) =>
+    request<{ job_id: string; status: string; url?: string | null }>(`/v1-demo?job=${encodeURIComponent(jobId)}`),
 
   // Voice clone: upload reference audio to Storage first, then register + attest consent.
   async cloneVoice(input: {
