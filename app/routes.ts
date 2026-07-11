@@ -13,6 +13,7 @@ export default [
     ...prefix("app", [
       route("dashboard", "routes/app.dashboard.tsx"),
       route("narrate", "routes/app.narrate.tsx"),
+      route("voices", "routes/app.voices.tsx"),
       route("voices/new", "routes/app.voices.new.tsx"),
     ]),
   ]),

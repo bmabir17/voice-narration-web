@@ -21,6 +21,7 @@ export default function AppLayout() {
       <nav style={{ display: "flex", gap: "1rem", padding: "0.9rem 1.25rem", borderBottom: "1px solid #eee" }}>
         <Link to="/app/dashboard">Dashboard</Link>
         <Link to="/app/narrate">New narration</Link>
+        <Link to="/app/voices">My voices</Link>
         <Link to="/app/voices/new">Add voice</Link>
         <button style={{ marginLeft: "auto" }} onClick={() => supabase.auth.signOut().then(() => navigate("/"))}>
           Sign out

@@ -37,6 +37,7 @@ export const api = {
   getJob: (id: string) => request(`/v1-jobs/${id}`),
   listJobs: (status?: string) => request(`/v1-jobs${status ? `?status=${status}` : ""}`),
   listVoices: () => request<{ voices: unknown[] }>("/v1-voices"),
+  deleteVoice: (id: string) => request(`/v1-voices/${id}`, { method: "DELETE" }),
   usage: () => request("/v1-usage"),
 
   // Voice clone: upload reference audio to Storage first, then register + attest consent.
