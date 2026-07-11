@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useEffect, useState } from "react";
+import { useNavigate, Link } from "react-router";
 import { api, uploadReferenceAudio } from "~/lib/api";
 import { supabase } from "~/lib/supabase";
 import { ConsentGate, CONSENT_STATEMENT_VERSION } from "~/components/ConsentGate";
@@ -13,6 +13,17 @@ export default function NewVoice() {
   const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [canClone, setCanClone] = useState<boolean | null>(null); // null = still checking plan
+  const [tier, setTier] = useState<string>("");
+
+  useEffect(() => {
+    // Cloning is a paid feature; check the plan up-front so free users get a clear upgrade prompt
+    // instead of filling the form and uploading only to be rejected. Default to allowing if the
+    // limit field is absent (older v1-usage) — the server stays authoritative on submit.
+    api.usage()
+      .then((u: any) => { setTier(u.tier ?? ""); setCanClone((u.max_custom_voices ?? 1) > 0); })
+      .catch(() => setCanClone(true));
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,6 +43,20 @@ export default function NewVoice() {
     } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
   }
 
+  if (canClone === false) {
+    return (
+      <main style={{ maxWidth: 640, margin: "0 auto", padding: "2rem 1.25rem" }}>
+        <h1>Add your voice</h1>
+        <p>Voice cloning is available on the <strong>Creator</strong> plan and above. Your current plan
+          {tier ? ` (${tier})` : ""} doesn't include custom voices.</p>
+        <Link to="/pricing" style={{ display: "inline-block", padding: "0.7rem 1.3rem",
+          background: "#1a73e8", color: "#fff", borderRadius: 6, textDecoration: "none" }}>
+          See plans
+        </Link>
+      </main>
+    );
+  }
+
   return (
     <main style={{ maxWidth: 640, margin: "0 auto", padding: "2rem 1.25rem" }}>
       <h1>Add your voice</h1>
@@ -46,7 +71,15 @@ export default function NewVoice() {
             <option value="hi">Hindi</option>
           </select>
         </label>
-        <input type="file" accept="audio/*" required onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+        <label style={{ display: "grid", gap: "0.35rem" }}>
+          <span>Reference audio</span>
+          <input type="file" required
+                 accept=".wav,.mp3,.m4a,.aac,.flac,.ogg,audio/*"
+                 onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+          <small style={{ color: "#666" }}>
+            WAV, MP3, M4A/AAC, FLAC or OGG · 5–10 s of clean, single-speaker speech (no music or background noise).
+          </small>
+        </label>
         <ConsentGate onChange={setAgreed} />
         <button disabled={busy || !agreed || !file} style={{ padding: "0.7rem 1.3rem" }}>
           {busy ? "Uploading…" : "Create voice"}
