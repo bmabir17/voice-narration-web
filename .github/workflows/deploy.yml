@@ -37,6 +37,8 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || 'https://oujiapafuibnfesmekfs.supabase.co' }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY || 'sb_publishable_doPX-mTepu_6jSJpUZEtLg_fZ5kWrhZ' }}
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://oujiapafuibnfesmekfs.functions.supabase.co' }}
+          # Turnstile SITE key only (public). The SECRET key is a Supabase Edge secret, never here.
+          VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAADz7xYu8JIcfHih0' }}
       # postbuild flattens the basename-nested prerender output + copies __spa-fallback.html → 404.html.
       - uses: actions/upload-pages-artifact@v3
         with:
