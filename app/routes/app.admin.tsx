@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 import { api, type AdminOverview } from "~/lib/api";
 
 const STATUS_COLOR: Record<string, string> = {
@@ -35,7 +36,10 @@ export default function Admin() {
     <main style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.25rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
         <h1>Control plane</h1>
-        <button onClick={load} style={{ padding: "0.4rem 0.9rem", cursor: "pointer" }}>Refresh</button>
+        <div style={{ display: "flex", gap: "1rem", alignItems: "baseline" }}>
+          <Link to="/app/admin/users">Manage users →</Link>
+          <button onClick={load} style={{ padding: "0.4rem 0.9rem", cursor: "pointer" }}>Refresh</button>
+        </div>
       </div>
       <p style={{ color: "#888", fontSize: "0.8rem" }}>
         Snapshot {wq.snapshot_age_sec == null ? "never written" : `${wq.snapshot_age_sec}s old`}

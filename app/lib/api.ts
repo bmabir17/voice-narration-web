@@ -40,6 +40,16 @@ export interface DemoVoice {
   accent: string | null;
 }
 
+export interface AdminUser {
+  id: string;
+  email: string | null;
+  plan_tier: string;
+  subscription_status: string;
+  current_period_end: string | null;
+  mor_subscription_id: string | null;
+  created_at: string;
+}
+
 export interface AdminOverview {
   generated_at: string;
   worker_and_queue: {
@@ -96,6 +106,18 @@ export const api = {
 
   // Admin overview (operators only; server-gated by ADMIN_USER_IDS). Reads Postgres — no Redis cost.
   admin: () => request<AdminOverview>("/v1-admin"),
+
+  // Admin: user + subscription management (same allowlist gate).
+  adminUsers: {
+    list: (q?: string) =>
+      request<{ users: AdminUser[]; total: number }>(`/v1-admin/users${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+    create: (input: { email: string; plan_tier?: string }) =>
+      request<{ id: string; email: string }>("/v1-admin/users", { method: "POST", body: JSON.stringify(input) }),
+    update: (id: string, patch: {
+      plan_tier?: string; subscription_status?: string; current_period_end?: string | null; reset_usage?: boolean;
+    }) => request(`/v1-admin/users/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+    remove: (id: string) => request(`/v1-admin/users/${id}`, { method: "DELETE" }),
+  },
 
   // Public demo playground (no auth) — gated by Turnstile + per-IP rate limits server-side.
   demoPresets: () => request<{ voices: DemoVoice[] }>("/v1-demo"),

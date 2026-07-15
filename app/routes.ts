@@ -17,6 +17,7 @@ export default [
       route("voices/new", "routes/app.voices.new.tsx"),
       route("billing", "routes/app.billing.tsx"),
       route("admin", "routes/app.admin.tsx"),
+      route("admin/users", "routes/app.admin.users.tsx"),
     ]),
   ]),
 ] satisfies RouteConfig;
