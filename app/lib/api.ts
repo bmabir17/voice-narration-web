@@ -61,7 +61,10 @@ export interface AdminOverview {
     snapshot_age_sec: number | null;
   };
   jobs: {
-    recent: Array<{ id: string; status: string; voice_id: string; language: string; created_at: string }>;
+    recent: Array<{
+      id: string; status: string; voice_id: string; language: string; created_at: string;
+      user_id: string | null; email: string | null;
+    }>;
     counts: { queued: number; processing: number; completed: number; failed: number };
   };
   billing: {

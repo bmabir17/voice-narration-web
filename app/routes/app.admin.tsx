@@ -69,11 +69,13 @@ export default function Admin() {
         </Grid>
         <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "0.8rem", fontSize: "0.85rem" }}>
           <thead><tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
-            <th>Job</th><th>Status</th><th>Voice</th><th>Created</th></tr></thead>
+            <th>Job</th><th>User</th><th>Status</th><th>Voice</th><th>Created</th></tr></thead>
           <tbody>
             {jobs.recent.map((j) => (
               <tr key={j.id} style={{ borderBottom: "1px solid #f2f2f2" }}>
-                <td><code>{j.id}</code></td><td>{j.status}</td><td>{j.voice_id}</td>
+                <td><code>{j.id}</code></td>
+                <td title={j.user_id ?? ""}>{j.email ?? (j.user_id ? <em>unknown</em> : "—")}</td>
+                <td>{j.status}</td><td>{j.voice_id}</td>
                 <td>{new Date(j.created_at).toLocaleString()}</td>
               </tr>
             ))}
