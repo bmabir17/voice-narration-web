@@ -40,6 +40,37 @@ export interface DemoVoice {
   accent: string | null;
 }
 
+export interface AdminOverview {
+  generated_at: string;
+  worker_and_queue: {
+    home_alive: boolean | null;
+    failover_state: string | null;
+    total_depth: number;
+    depth_by_lane: Record<string, number>;
+    oldest_age_ms: Record<string, number>;
+    snapshot_age_sec: number | null;
+  };
+  jobs: {
+    recent: Array<{ id: string; status: string; voice_id: string; language: string; created_at: string }>;
+    counts: { queued: number; processing: number; completed: number; failed: number };
+  };
+  billing: {
+    total_users: number;
+    by_plan: Record<string, number>;
+    by_subscription_status: Record<string, number>;
+    minutes_this_period: number;
+    period: string;
+  };
+  redis_estimate: {
+    note: string;
+    per_day: Record<string, number>;
+    per_day_total: number;
+    per_month: number;
+    free_tier_month: number;
+    pct_of_free_tier: number;
+  };
+}
+
 export interface SubmitJobInput {
   language: string;
   voice_id: string;
@@ -62,6 +93,9 @@ export const api = {
   checkout: (tier: string) =>
     request<{ url: string }>("/v1-billing/checkout", { method: "POST", body: JSON.stringify({ tier }) }),
   billingPortal: () => request<{ url: string }>("/v1-billing/portal"),
+
+  // Admin overview (operators only; server-gated by ADMIN_USER_IDS). Reads Postgres — no Redis cost.
+  admin: () => request<AdminOverview>("/v1-admin"),
 
   // Public demo playground (no auth) — gated by Turnstile + per-IP rate limits server-side.
   demoPresets: () => request<{ voices: DemoVoice[] }>("/v1-demo"),
