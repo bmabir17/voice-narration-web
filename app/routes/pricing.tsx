@@ -37,7 +37,7 @@ export default function Pricing() {
     setErr(null); setBusy(tier);
     try {
       const { url } = await api.checkout(tier);
-      window.location.href = url; // → Lemon Squeezy hosted checkout
+      window.location.href = url; // → Paddle hosted checkout
     } catch (e: any) {
       setErr(e.message === "billing not configured"
         ? "Checkout isn't wired up yet — please try again shortly."

@@ -86,7 +86,7 @@ export default function AdminUsers() {
       </form>
       <p style={{ fontSize: "0.8rem", color: "#888" }}>
         Plan/status here are manual overrides (comps, corrections, stuck webhooks) — they don't change the
-        user's Lemon Squeezy subscription. Admin access itself is controlled by the ADMIN_USER_IDS secret, not here.
+        user's Paddle subscription. Admin access itself is controlled by the ADMIN_USER_IDS secret, not here.
       </p>
 
       <div style={{ display: "flex", gap: "0.5rem", margin: "1rem 0" }}>
@@ -106,7 +106,7 @@ export default function AdminUsers() {
                 <tr key={u.id} style={{ borderBottom: "1px solid #f2f2f2" }}>
                   <td style={{ padding: "0.35rem 0" }}>
                     {u.email ?? <em>no email</em>}
-                    {u.mor_subscription_id && <span title="has Lemon Squeezy subscription"> 💳</span>}
+                    {u.mor_subscription_id && <span title="has an active Paddle subscription"> 💳</span>}
                   </td>
                   <td>
                     <select value={u.plan_tier} onChange={(e) => setField(u.id, "plan_tier", e.target.value)}

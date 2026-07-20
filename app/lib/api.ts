@@ -102,7 +102,7 @@ export const api = {
   deleteVoice: (id: string) => request(`/v1-voices/${id}`, { method: "DELETE" }),
   usage: () => request<UsageResponse>("/v1-usage"),
 
-  // Billing (server-side Lemon Squeezy). checkout → hosted checkout URL; portal → manage/cancel URL.
+  // Billing (server-side Paddle Billing). checkout → hosted checkout URL; portal → manage/cancel URL.
   checkout: (tier: string) =>
     request<{ url: string }>("/v1-billing/checkout", { method: "POST", body: JSON.stringify({ tier }) }),
   billingPortal: () => request<{ url: string }>("/v1-billing/portal"),
