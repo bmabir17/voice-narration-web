@@ -11,7 +11,7 @@ export default {
   basename: "/voice-narration-web/",
   async prerender() {
     return [
-      "/", "/pricing", "/demo",
+      "/", "/pricing", "/demo", "/pay",
       "/blog", // blog index; per-post paths added as MDX posts land
       "/docs",
       ...seoMatrixPaths(),
