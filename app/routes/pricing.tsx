@@ -14,10 +14,10 @@ interface Tier {
   tier: string; name: string; price: string; blurb: string; purchasable: boolean;
 }
 const TIERS: Tier[] = [
-  { tier: "free",    name: "Free",         price: "$0",     blurb: "~15 min/mo, watermarked, non-commercial.", purchasable: false },
-  { tier: "creator", name: "Creator",      price: "$19–29", blurb: "~3 hrs + commercial rights + 1 custom voice.", purchasable: true },
-  { tier: "pro",     name: "Pro",          price: "$49–99", blurb: "~15 hrs + multiple voices + API access.", purchasable: true },
-  { tier: "volume",  name: "Volume / API", price: "$149+",  blurb: "Flat 'up to N hours' tiers for high volume.", purchasable: true },
+  { tier: "free",    name: "Free",         price: "$0",      blurb: "~15 min/mo, watermarked, non-commercial.", purchasable: false },
+  { tier: "creator", name: "Creator",      price: "$22/mo",  blurb: "~3 hrs + commercial rights + 1 custom voice.", purchasable: true },
+  { tier: "pro",     name: "Pro",          price: "$50/mo",  blurb: "~15 hrs + up to 5 voices + API access.", purchasable: true },
+  { tier: "volume",  name: "Volume / API", price: "$100/mo", blurb: "~100 hrs + up to 20 voices + API + deadline lane.", purchasable: true },
 ];
 
 export default function Pricing() {

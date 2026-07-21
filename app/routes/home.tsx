@@ -8,7 +8,7 @@ export function meta() {
     { "script:ld+json": {
         "@context": "https://schema.org", "@type": "SoftwareApplication",
         name: "Voice Narration", applicationCategory: "MultimediaApplication",
-        offers: { "@type": "Offer", price: "19", priceCurrency: "USD" },
+        offers: { "@type": "Offer", price: "22", priceCurrency: "USD" },
       } },
   ];
 }
