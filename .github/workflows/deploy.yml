@@ -40,7 +40,7 @@ jobs:
           # Turnstile SITE key only (public). The SECRET key is a Supabase Edge secret, never here.
           VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAADz7xYu8JIcfHih0' }}
           # Paddle CLIENT-side token (public). Set the repo Variable — the server API key is NOT here.
-          VITE_PADDLE_CLIENT_TOKEN: ${{ vars.VITE_PADDLE_CLIENT_TOKEN || '' }}
+          VITE_PADDLE_CLIENT_TOKEN: ${{ vars.VITE_PADDLE_CLIENT_TOKEN || 'test_d167fd4ab68f94295049573c867' }}
       # postbuild flattens the basename-nested prerender output + copies __spa-fallback.html → 404.html.
       - uses: actions/upload-pages-artifact@v3
         with:
