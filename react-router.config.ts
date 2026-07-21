@@ -11,6 +11,7 @@ export default {
   async prerender() {
     return [
       "/", "/pricing", "/demo", "/pay",
+      "/terms", "/privacy", "/refunds",
       "/blog", // blog index; per-post paths added as MDX posts land
       "/docs",
       ...seoMatrixPaths(),

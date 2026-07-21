@@ -10,6 +10,9 @@ export default [
   route("login", "routes/login.tsx"),
   route("auth/callback", "routes/auth.callback.tsx"),
   route("pay", "routes/pay.tsx"), // Paddle default-payment-link bridge (public; opens the _ptxn checkout)
+  route("terms", "routes/terms.tsx"),
+  route("privacy", "routes/privacy.tsx"),
+  route("refunds", "routes/refunds.tsx"),
   layout("routes/app.tsx", [
     ...prefix("app", [
       route("dashboard", "routes/app.dashboard.tsx"),
