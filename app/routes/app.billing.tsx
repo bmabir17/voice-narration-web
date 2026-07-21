@@ -73,6 +73,7 @@ export default function Billing() {
   const isPaid = usage.tier !== "free";
   const renew = usage.current_period_end
     ? new Date(usage.current_period_end).toLocaleDateString() : null;
+  const cancelAt = usage.cancel_at ? new Date(usage.cancel_at).toLocaleDateString() : null;
 
   return (
     <main style={{ maxWidth: 640, margin: "0 auto", padding: "2rem 1.25rem" }}>
@@ -92,11 +93,15 @@ export default function Billing() {
             {usage.subscription_status}
           </span>
         </div>
-        {renew && (
+        {cancelAt ? (
+          <p style={{ color: "#ef6c00", margin: "0.4rem 0 0", fontWeight: 500 }}>
+            Cancels on {cancelAt} — you keep {TIER_LABEL[usage.tier] ?? usage.tier} access until then.
+          </p>
+        ) : renew ? (
           <p style={{ color: "#666", margin: "0.4rem 0 0" }}>
             {usage.subscription_status === "cancelled" ? "Access until" : "Renews"} {renew}
           </p>
-        )}
+        ) : null}
 
         <div style={{ marginTop: "1rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem", color: "#555" }}>

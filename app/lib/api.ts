@@ -27,6 +27,7 @@ export interface UsageResponse {
   tier: string;
   subscription_status: string;
   current_period_end: string | null;
+  cancel_at: string | null;
   minutes_used: number;
   minutes_limit: number;
   jobs_count: number;
