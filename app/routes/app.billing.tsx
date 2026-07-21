@@ -13,9 +13,35 @@ export default function Billing() {
   const [usage, setUsage] = useState<UsageResponse | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
+  // On mount, load usage. If we just returned from a successful checkout (?status=success), the
+  // Paddle webhook that provisions the plan lands a moment later — so poll until the subscription
+  // goes active instead of making the user reload.
   useEffect(() => {
-    api.usage().then(setUsage).catch((e) => setErr(e.message));
+    const justPaid = new URLSearchParams(window.location.search).get("status") === "success";
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let tries = 0;
+
+    async function load() {
+      try {
+        const u = await api.usage();
+        if (cancelled) return;
+        setUsage(u);
+        if (justPaid && u.subscription_status !== "active" && tries < 15) {
+          setConfirming(true);
+          tries++;
+          timer = setTimeout(load, 2000); // webhook usually lands within a few seconds
+        } else {
+          setConfirming(false);
+          // Drop ?status=success so a later reload doesn't re-enter the polling state.
+          if (justPaid) window.history.replaceState({}, "", window.location.pathname);
+        }
+      } catch (e: any) { if (!cancelled) setErr(e.message); }
+    }
+    load();
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
   }, []);
 
   async function openPortal() {
@@ -52,6 +78,12 @@ export default function Billing() {
     <main style={{ maxWidth: 640, margin: "0 auto", padding: "2rem 1.25rem" }}>
       <h1>Billing</h1>
       {err && <p style={{ color: "crimson" }}>{err}</p>}
+      {confirming && (
+        <p style={{ background: "#eef4ff", border: "1px solid #cfe0ff", color: "#1858c7",
+                    borderRadius: 8, padding: "0.7rem 0.9rem", fontSize: ".92rem" }}>
+          ✓ Payment received — confirming your subscription… this updates automatically in a few seconds.
+        </p>
+      )}
 
       <section style={{ border: "1px solid #ddd", borderRadius: 10, padding: "1.2rem", marginBottom: "1.5rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
