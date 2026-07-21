@@ -13,8 +13,8 @@ export default function Login() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
-    // BASE_URL includes the subpath (/voice-narration-web/) and a trailing slash, so the magic-link
-    // redirect lands inside the app. window.location.origin alone would drop the base path → dead URL.
+    // BASE_URL is the router base (now "/" at the apex domain) with a trailing slash, so the
+    // magic-link redirect resolves to https://narration.me/auth/callback.
     const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}auth/callback`;
     // captchaToken is passed only when present; requires CAPTCHA (Turnstile) enabled in Supabase Auth.
     const { error } = await supabase.auth.signInWithOtp({

@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "react-router dev",
     "build": "react-router build",
-    "postbuild": "cp -r build/client/voice-narration-web/. build/client/ && rm -rf build/client/voice-narration-web && cp build/client/__spa-fallback.html build/client/404.html",
+    "postbuild": "cp build/client/__spa-fallback.html build/client/404.html",
     "typecheck": "tsc --noEmit",
     "lint": "eslint app"
   },
