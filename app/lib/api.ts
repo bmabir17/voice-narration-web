@@ -130,6 +130,7 @@ export const api = {
   listVideoJobs: () => request<{ jobs: VideoJobRow[] }>("/v1-video-jobs"),
   videoPlanDecision: (id: string, body: { action: "approve" | "reject"; plan?: any }) =>
     request<{ ok: boolean; action: string }>(`/v1-video-jobs/${id}/plan`, { method: "POST", body: JSON.stringify(body) }),
+  deleteVideoJob: (id: string) => request<{ ok: boolean }>(`/v1-video-jobs/${id}`, { method: "DELETE" }),
   getJob: (id: string) => request(`/v1-jobs/${id}`),
   listJobs: (status?: string) => request(`/v1-jobs${status ? `?status=${status}` : ""}`),
   listVoices: () => request<{ voices: unknown[] }>("/v1-voices"),
