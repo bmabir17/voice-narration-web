@@ -166,10 +166,15 @@ export default function VideoRun() {
     }
   }
 
-  // Per-shot result cards, from the shot_done events (latest per index).
+  // Per-shot result cards, from the shot_done events. Merge across re-emits (e.g. a resumed run
+  // re-reports a shot) so a shot_key produced by any emit is preserved.
   const shotCards = (() => {
     const byIdx = new Map<number, any>();
-    for (const e of events) if (e.stage === "shot_done" && e.payload) byIdx.set(e.payload.index ?? 0, e.payload);
+    for (const e of events) if (e.stage === "shot_done" && e.payload) {
+      const idx = e.payload.index ?? 0;
+      const prev = byIdx.get(idx);
+      byIdx.set(idx, { ...prev, ...e.payload, shot_key: e.payload.shot_key || prev?.shot_key });
+    }
     return [...byIdx.values()].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
   })();
 
