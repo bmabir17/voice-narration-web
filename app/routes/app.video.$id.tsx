@@ -43,6 +43,7 @@ export default function VideoRun() {
   const [acting, setActing] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [shotUrls, setShotUrls] = useState<Record<string, string>>({}); // shot_key → signed preview URL
   // ETA model: avg render seconds-per-shot from past completed jobs, keyed by video model.
   const [perShot, setPerShot] = useState<{ byModel: Record<string, number>; global: number | null } | null>(null);
   const [currentModel, setCurrentModel] = useState("");
@@ -100,6 +101,23 @@ export default function VideoRun() {
     return () => clearInterval(t);
   }, [job?.status]);
 
+  // Mint a signed preview URL for each finished shot's clip (RLS lets a user sign their own objects).
+  useEffect(() => {
+    const missing = Array.from(new Set(
+      events.filter((e) => e.stage === "shot_done" && e.payload?.shot_key).map((e) => e.payload.shot_key as string)
+    )).filter((k) => !(k in shotUrls));
+    if (!missing.length) return;
+    (async () => {
+      const add: Record<string, string> = {};
+      for (const k of missing) {
+        const { data } = await supabase.storage.from("video-output").createSignedUrl(k, 3600);
+        if (data?.signedUrl) add[k] = data.signedUrl;
+      }
+      if (Object.keys(add).length) setShotUrls((u) => ({ ...u, ...add }));
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [events]);
+
   useEffect(() => {
     if (job?.status === "awaiting_plan" && job.plan && editShots === null) {
       setEditShots(job.plan.shots.map((s) => ({ ...s })));
@@ -147,6 +165,13 @@ export default function VideoRun() {
       eta = "estimating…";
     }
   }
+
+  // Per-shot result cards, from the shot_done events (latest per index).
+  const shotCards = (() => {
+    const byIdx = new Map<number, any>();
+    for (const e of events) if (e.stage === "shot_done" && e.payload) byIdx.set(e.payload.index ?? 0, e.payload);
+    return [...byIdx.values()].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+  })();
 
   return (
     <div style={{ display: "flex", gap: 22, maxWidth: 1140, margin: "0 auto", padding: "1.5rem 1.25rem", alignItems: "flex-start" }}>
@@ -266,6 +291,29 @@ export default function VideoRun() {
               </section>
             )}
 
+            {/* Per-shot result cards — stream in as each shot finishes */}
+            {shotCards.length > 0 && (
+              <section style={{ margin: "1.2rem 0" }}>
+                <h3 style={{ margin: "0 0 .6rem" }}>Shots{job.progress?.shots_total ? ` (${shotCards.length}/${job.progress.shots_total})` : ""}</h3>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
+                  {shotCards.map((s) => (
+                    <div key={s.index} style={{ border: "1px solid #e5e5e5", borderRadius: 8, padding: ".6rem", background: "#fafafa" }}>
+                      <div style={{ fontSize: ".8rem", fontWeight: 600, color: "#555" }}>Shot {(s.index ?? 0) + 1}{s.scene ? ` · ${s.scene}` : ""}</div>
+                      {s.shot_key && shotUrls[s.shot_key]
+                        ? <video src={shotUrls[s.shot_key]} controls preload="metadata" style={{ width: "100%", borderRadius: 6, background: "#000", marginTop: 6 }} />
+                        : <div style={{ marginTop: 6, height: 120, borderRadius: 6, background: "#eee", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: ".8rem" }}>preparing…</div>}
+                      <div style={{ fontSize: ".72rem", marginTop: 5 }}>
+                        <span style={{ color: VERDICT_COLOR[s.verdict] ?? "#777", fontWeight: 600 }}>{s.verdict}</span>
+                        {typeof s.prompt_adherence === "number" ? <span style={{ color: "#888" }}> · adherence {s.prompt_adherence}</span> : null}
+                        {typeof s.artifacts === "number" ? <span style={{ color: "#888" }}> · artifacts {s.artifacts}</span> : null}
+                        {s.candidates > 1 ? <span style={{ color: "#888" }}> · best of {s.candidates}</span> : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* Live event log with timestamps (relative to the first event; absolute on hover) */}
             <details style={{ marginTop: "1.2rem" }} open={!TERMINAL.has(job.status)}>
               <summary style={{ cursor: "pointer", color: "#666", fontSize: ".85rem" }}>Activity ({events.length})</summary>
@@ -292,6 +340,7 @@ export default function VideoRun() {
   );
 }
 
+const VERDICT_COLOR: Record<string, string> = { pass: "#137333", passed: "#137333", revise: "#8a6d00", reject: "#c5221f" };
 const miniBtn = (disabled: boolean): React.CSSProperties => ({
   padding: "2px 8px", fontSize: ".72rem", fontWeight: 600, borderRadius: 5, border: "1px solid #ccc",
   background: "#fff", color: disabled ? "#aaa" : "#333", cursor: disabled ? "default" : "pointer",
