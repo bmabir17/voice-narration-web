@@ -95,8 +95,41 @@ export interface SubmitJobInput {
   idempotency_key?: string;
 }
 
+// --- Video (manuscript → narrated video) -------------------------------------------------------
+export interface VideoOpts {
+  candidates?: number; crossfade?: number; shots?: number | null; music?: boolean;
+  keyframes?: boolean; continuity?: boolean; mode?: "deterministic" | "agentic";
+  planner_model?: string | null; remote_llm?: boolean; video_model?: string | null;
+  quality?: boolean; causvid_strength?: number; auto_approve?: boolean;
+}
+export interface SubmitVideoInput {
+  manuscript: string; style_brief?: string | null; aspect?: string; fps?: number; language?: string;
+  voice_id?: string | null; voice_ref?: string | null; voice_consent?: boolean;
+  character_ids?: string[]; character_refs?: string[]; face_consent?: boolean;
+  opts?: VideoOpts; idempotency_key?: string;
+}
+export interface VideoJobRow {
+  id: string; status: string; stage: string | null;
+  progress: { shots_done: number; shots_total: number };
+  style_brief: string | null; created_at: string;
+}
+export interface VideoJobDetail {
+  job_id: string; status: string; stage: string | null;
+  progress: { shots_done: number; shots_total: number };
+  plan: { brief: any; shots: any[] } | null;
+  qa: { ok: boolean; checks: Record<string, boolean>; notes: string[] } | null;
+  error: string | null; duration_s: number | null; ai_disclosure: string;
+  video_url: string | null; created_at: string; updated_at: string | null;
+}
+
 export const api = {
   submitJob: (input: SubmitJobInput) => request("/v1-jobs", { method: "POST", body: JSON.stringify(input) }),
+  submitVideoJob: (input: SubmitVideoInput) =>
+    request<{ job_id: string; status: string }>("/v1-video-jobs", { method: "POST", body: JSON.stringify(input) }),
+  getVideoJob: (id: string) => request<VideoJobDetail>(`/v1-video-jobs/${id}`),
+  listVideoJobs: () => request<{ jobs: VideoJobRow[] }>("/v1-video-jobs"),
+  videoPlanDecision: (id: string, body: { action: "approve" | "reject"; plan?: any }) =>
+    request<{ ok: boolean; action: string }>(`/v1-video-jobs/${id}/plan`, { method: "POST", body: JSON.stringify(body) }),
   getJob: (id: string) => request(`/v1-jobs/${id}`),
   listJobs: (status?: string) => request(`/v1-jobs${status ? `?status=${status}` : ""}`),
   listVoices: () => request<{ voices: unknown[] }>("/v1-voices"),
@@ -139,6 +172,16 @@ export const api = {
     return request("/v1-voices", { method: "POST", body: JSON.stringify(input) });
   },
 };
+
+// Upload an ad-hoc cast face straight to the private character-refs bucket (RLS-scoped by user_id
+// prefix); returns the storage key to pass as character_refs in a video job.
+export async function uploadFaceImage(userId: string, file: File): Promise<{ ref: string }> {
+  const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
+  const ref = `${userId}/face_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage.from("character-refs").upload(ref, file, { upsert: true });
+  if (error) throw error;
+  return { ref };
+}
 
 export async function uploadReferenceAudio(userId: string, voiceId: string, file: Blob): Promise<{ ref: string; sha256: string }> {
   const ref = `${userId}/${voiceId}/source.wav`;

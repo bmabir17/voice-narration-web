@@ -20,6 +20,8 @@ export default [
     ...prefix("app", [
       route("dashboard", "routes/app.dashboard.tsx"),
       route("narrate", "routes/app.narrate.tsx"),
+      route("video", "routes/app.video.tsx"),
+      route("video/:id", "routes/app.video.$id.tsx"),
       route("voices", "routes/app.voices.tsx"),
       route("voices/new", "routes/app.voices.new.tsx"),
       route("billing", "routes/app.billing.tsx"),
