@@ -77,10 +77,17 @@ export default function VideoNew() {
   useEffect(() => {
     setSaved(loadPresets());
     api.listVoices().then((r: any) => setVoices(r.voices ?? [])).catch(() => {});
-    const refresh = () => api.listVideoJobs().then((r) => setJobs(r.jobs)).catch(() => {});
-    refresh();
+    api.listVideoJobs().then((r) => setJobs(r.jobs)).catch(() => {});
+    // Live-update the list straight from each change payload (video_jobs is REPLICA IDENTITY FULL)
+    // instead of re-fetching the whole list on every render tick.
     const ch = supabase.channel("video_jobs_list")
-      .on("postgres_changes", { event: "*", schema: "public", table: "video_jobs" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "video_jobs" }, (p: any) => {
+        if (p.eventType === "DELETE") { const oid = p.old?.id; if (oid) setJobs((v) => v.filter((j) => j.id !== oid)); return; }
+        const r = p.new;
+        const row: VideoJobRow = { id: r.id, status: r.status, stage: r.stage ?? null, progress: r.progress,
+          style_brief: r.style_brief ?? null, created_at: r.created_at, expires_at: r.expires_at ?? null };
+        setJobs((v) => v.some((j) => j.id === row.id) ? v.map((j) => (j.id === row.id ? { ...j, ...row } : j)) : [row, ...v]);
+      })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);

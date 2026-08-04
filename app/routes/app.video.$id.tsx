@@ -94,9 +94,33 @@ export default function VideoRun() {
   useEffect(() => {
     setJob(null); setEvents([]); setEditShots(null); seen.current = new Set();
     refetch(); loadEvents(); refetchJobs(); loadPace();
+    // video_jobs is published REPLICA IDENTITY FULL, so each change payload carries the whole row —
+    // apply it directly instead of re-fetching over HTTP on every one of a render's ~55 ticks. The only
+    // field not in the row is the signed video_url (minted server-side), so we hit the Edge Function
+    // exactly once, when the job completes.
     const ch = supabase.channel(`video_job_${id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "video_jobs", filter: `id=eq.${id}` }, refetch)
-      .on("postgres_changes", { event: "*", schema: "public", table: "video_jobs" }, refetchJobs)
+      .on("postgres_changes", { event: "*", schema: "public", table: "video_jobs", filter: `id=eq.${id}` },
+        (p: any) => {
+          const r = p.new;
+          // Completion needs the server-minted signed video_url → fetch the canonical detail once,
+          // exactly as before. Every other tick applies the payload directly (no HTTP).
+          if (r.status === "completed") { refetch(); return; }
+          setJob((prev) => ({
+            job_id: id, status: r.status, stage: r.stage ?? null, progress: r.progress,
+            plan: r.plan ?? null, qa: r.qa ?? null, error: r.error ?? null, duration_s: r.duration_s ?? null,
+            ai_disclosure: r.ai_disclosure, video_url: prev?.video_url ?? null,
+            created_at: r.created_at, updated_at: r.updated_at ?? null, expires_at: r.expires_at ?? null,
+          }));
+        })
+      // Sidebar list stays live for every job, also straight from the payload (no full-list re-fetch).
+      .on("postgres_changes", { event: "*", schema: "public", table: "video_jobs" },
+        (p: any) => {
+          if (p.eventType === "DELETE") { const oid = p.old?.id; if (oid) setJobs((v) => v.filter((j) => j.id !== oid)); return; }
+          const r = p.new;
+          const row: VideoJobRow = { id: r.id, status: r.status, stage: r.stage ?? null, progress: r.progress,
+            style_brief: r.style_brief ?? null, created_at: r.created_at, expires_at: r.expires_at ?? null };
+          setJobs((v) => v.some((j) => j.id === row.id) ? v.map((j) => (j.id === row.id ? { ...j, ...row } : j)) : [row, ...v]);
+        })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "video_job_events", filter: `job_id=eq.${id}` },
         (p: any) => { const e = p.new as Ev; if (!seen.current.has(e.seq)) { seen.current.add(e.seq); setEvents((v) => [...v, e]); } })
       .subscribe();
