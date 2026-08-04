@@ -60,7 +60,8 @@ export default function VideoRun() {
   const [showCandidates, setShowCandidates] = useState(false);
   const [selections, setSelections] = useState<Record<number, number>>({}); // shot_index → chosen seed
   const [candUrls, setCandUrls] = useState<Record<string, string>>({});      // candidate shot_key → URL
-  const [editBusy, setEditBusy] = useState(false);
+  // Which edit is in flight (drives the per-button spinner). Cleared when the worker leaves "editing".
+  const [pending, setPending] = useState<{ kind: "regen"; shot: number } | { kind: "reasm" } | null>(null);
   // ETA model: avg render seconds-per-shot from past completed jobs, keyed by video model.
   const [perShot, setPerShot] = useState<{ byModel: Record<string, number>; global: number | null } | null>(null);
   const [currentModel, setCurrentModel] = useState("");
@@ -119,8 +120,11 @@ export default function VideoRun() {
           setJob((prev) => ({
             job_id: id, status: r.status, stage: r.stage ?? null, progress: r.progress,
             plan: r.plan ?? null, qa: r.qa ?? null, error: r.error ?? null, duration_s: r.duration_s ?? null,
+            render_seconds: r.render_seconds ?? prev?.render_seconds ?? null,
             ai_disclosure: r.ai_disclosure, video_url: prev?.video_url ?? null,
             created_at: r.created_at, updated_at: r.updated_at ?? null, expires_at: r.expires_at ?? null,
+            // Carry render_state so a mid-edit "editing" tick doesn't drop it and unmount the modal.
+            render_state: r.render_state ?? prev?.render_state ?? null,
           }));
         })
       // Sidebar list stays live for every job, also straight from the payload (no full-list re-fetch).
@@ -193,13 +197,17 @@ export default function VideoRun() {
   }, [job?.render_state]);
 
   async function regenerate(shotIndex: number) {
-    setEditBusy(true); setErr(null);
-    try { await api.regenerateShot(id, shotIndex, 2); } catch (e: any) { setErr(e.message); } finally { setEditBusy(false); }
+    setErr(null); setPending({ kind: "regen", shot: shotIndex }); // held until the worker finishes (below)
+    try { await api.regenerateShot(id, shotIndex, 2); }
+    catch (e: any) { setErr(e.message); setPending(null); }
   }
   async function reassemble() {
-    setEditBusy(true); setErr(null);
-    try { await api.reassembleVideo(id, selections); } catch (e: any) { setErr(e.message); } finally { setEditBusy(false); }
+    setErr(null); setPending({ kind: "reasm" });
+    try { await api.reassembleVideo(id, selections); }
+    catch (e: any) { setErr(e.message); setPending(null); }
   }
+  // The POST returns fast but the render runs on the GPU; keep the spinner until the job leaves "editing".
+  useEffect(() => { if (job && job.status !== "editing") setPending(null); }, [job?.status]);
 
   useEffect(() => {
     if (job?.status === "awaiting_plan" && job.plan && editShots === null) {
@@ -487,10 +495,16 @@ export default function VideoRun() {
                   <div key={s.index} style={{ borderTop: "1px solid #eee", paddingTop: 12 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                       <b style={{ fontSize: ".9rem" }}>Shot {s.index + 1}{s.scene ? ` · ${s.scene}` : ""}</b>
-                      <button disabled={editBusy || job.status === "editing"} onClick={() => regenerate(s.index)}
-                        style={{ fontSize: ".78rem", color: ACCENT, border: `1px solid ${ACCENT}`, borderRadius: 6, background: "#fff", padding: "3px 10px", cursor: editBusy || job.status === "editing" ? "default" : "pointer", opacity: editBusy || job.status === "editing" ? 0.5 : 1 }}>
-                        ↻ Regenerate 2 more
-                      </button>
+                      {(() => {
+                        const busy = !!pending || job.status === "editing";
+                        const mine = pending?.kind === "regen" && pending.shot === s.index;
+                        return (
+                          <button disabled={busy} onClick={() => regenerate(s.index)}
+                            style={{ fontSize: ".78rem", color: ACCENT, border: `1px solid ${ACCENT}`, borderRadius: 6, background: "#fff", padding: "3px 10px", display: "inline-flex", alignItems: "center", gap: 6, cursor: busy ? "default" : "pointer", opacity: busy && !mine ? 0.5 : 1 }}>
+                            {mine ? <><span className="va-spinner" /> Regenerating…</> : "↻ Regenerate 2 more"}
+                          </button>
+                        );
+                      })()}
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 10 }}>
                       {s.candidates.map((c) => {
@@ -517,10 +531,16 @@ export default function VideoRun() {
             <div style={{ display: "flex", gap: 12, marginTop: 18, justifyContent: "flex-end", alignItems: "center" }}>
               <span style={{ fontSize: ".78rem", color: "#888", marginRight: "auto" }}>Regenerate + reassemble run on the home GPU (a few minutes each).</span>
               <button onClick={() => setShowCandidates(false)} style={{ background: "#fff", border: "1px solid #ccc", borderRadius: 7, padding: "0.6rem 1.1rem", cursor: "pointer", fontWeight: 600, color: "#333" }}>Close</button>
-              <button disabled={editBusy || job.status === "editing"} onClick={reassemble}
-                style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 7, padding: "0.6rem 1.2rem", fontWeight: 600, cursor: editBusy || job.status === "editing" ? "default" : "pointer", opacity: editBusy || job.status === "editing" ? 0.6 : 1 }}>
-                {editBusy ? "…" : "Use selections & re-assemble"}
-              </button>
+              {(() => {
+                const busy = !!pending || job.status === "editing";
+                const mine = pending?.kind === "reasm";
+                return (
+                  <button disabled={busy} onClick={reassemble}
+                    style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 7, padding: "0.6rem 1.2rem", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6, cursor: busy ? "default" : "pointer", opacity: busy && !mine ? 0.6 : 1 }}>
+                    {mine ? <><span className="va-spinner" /> Re-assembling…</> : "Use selections & re-assemble"}
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </div>
