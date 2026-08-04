@@ -8,12 +8,13 @@ const ACCENT = "#1a73e8";
 const STAGES = ["Plan", "Review", "Render", "Assemble", "QA", "Done"];
 const STAGE_INDEX: Record<string, number> = {
   queued: 0, claimed: 0, planning: 0, awaiting_plan: 1,
-  rendering: 2, assembling: 3, qa: 4, completed: 5,
+  rendering: 2, assembling: 3, qa: 4, completed: 5, editing: 5,
 };
 const TERMINAL = new Set(["completed", "failed", "cancelled"]);
 const STATUS_COLOR: Record<string, string> = {
   completed: "#137333", failed: "#c5221f", cancelled: "#8a6d00", awaiting_plan: "#8a6d00",
   planning: ACCENT, rendering: ACCENT, assembling: ACCENT, qa: ACCENT, claimed: ACCENT, queued: "#8a6d00",
+  editing: ACCENT,
 };
 // Injected once — inline styles can't declare @keyframes.
 const SPINNER_CSS = `@keyframes va-spin{to{transform:rotate(360deg)}}` +
@@ -51,9 +52,15 @@ export default function VideoRun() {
   const [events, setEvents] = useState<Ev[]>([]);
   const [editShots, setEditShots] = useState<any[] | null>(null);
   const [acting, setActing] = useState(false);
+  const [regenCount, setRegenCount] = useState(0);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [shotUrls, setShotUrls] = useState<Record<string, string>>({}); // shot_key → signed preview URL
+  // Candidate review modal (post-run: view all candidates, re-pick, regenerate, reassemble).
+  const [showCandidates, setShowCandidates] = useState(false);
+  const [selections, setSelections] = useState<Record<number, number>>({}); // shot_index → chosen seed
+  const [candUrls, setCandUrls] = useState<Record<string, string>>({});      // candidate shot_key → URL
+  const [editBusy, setEditBusy] = useState(false);
   // ETA model: avg render seconds-per-shot from past completed jobs, keyed by video model.
   const [perShot, setPerShot] = useState<{ byModel: Record<string, number>; global: number | null } | null>(null);
   const [currentModel, setCurrentModel] = useState("");
@@ -156,6 +163,44 @@ export default function VideoRun() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [events]);
 
+  // Seed the per-shot selection from the current chosen candidate (only for shots not yet touched).
+  useEffect(() => {
+    const rs = job?.render_state;
+    if (!rs) return;
+    setSelections((prev) => {
+      const next = { ...prev };
+      for (const s of rs.shots) if (!(s.index in next) && s.chosen_seed != null) next[s.index] = s.chosen_seed;
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job?.render_state]);
+
+  // Mint signed URLs for every candidate clip so the modal can play them.
+  useEffect(() => {
+    const rs = job?.render_state;
+    if (!rs) return;
+    const missing = Array.from(new Set(rs.shots.flatMap((s) => s.candidates.map((c) => c.shot_key)))).filter((k) => !(k in candUrls));
+    if (!missing.length) return;
+    (async () => {
+      const add: Record<string, string> = {};
+      for (const k of missing) {
+        const { data } = await supabase.storage.from("video-output").createSignedUrl(k, 3600);
+        if (data?.signedUrl) add[k] = data.signedUrl;
+      }
+      if (Object.keys(add).length) setCandUrls((u) => ({ ...u, ...add }));
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job?.render_state]);
+
+  async function regenerate(shotIndex: number) {
+    setEditBusy(true); setErr(null);
+    try { await api.regenerateShot(id, shotIndex, 2); } catch (e: any) { setErr(e.message); } finally { setEditBusy(false); }
+  }
+  async function reassemble() {
+    setEditBusy(true); setErr(null);
+    try { await api.reassembleVideo(id, selections); } catch (e: any) { setErr(e.message); } finally { setEditBusy(false); }
+  }
+
   useEffect(() => {
     if (job?.status === "awaiting_plan" && job.plan && editShots === null) {
       setEditShots(job.plan.shots.map((s) => ({ ...s })));
@@ -164,13 +209,14 @@ export default function VideoRun() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job?.status]);
 
-  async function decide(action: "approve" | "reject") {
+  async function decide(action: "approve" | "reject" | "regenerate") {
     if (!job) return;
     setActing(true); setErr(null);
     try {
       const body: any = { action };
       if (action === "approve" && job.plan && editShots) body.plan = { brief: job.plan.brief, shots: editShots };
       await api.videoPlanDecision(id, body);
+      if (action === "regenerate") setRegenCount((n) => n + 1); // worker re-plans at a higher temperature
     } catch (e: any) { setErr(e.message); } finally { setActing(false); }
   }
 
@@ -330,13 +376,18 @@ export default function VideoRun() {
                     </div>
                   ))}
                 </div>
-                <div style={{ display: "flex", gap: 12, marginTop: "1rem" }}>
+                <div style={{ display: "flex", gap: 12, marginTop: "1rem", flexWrap: "wrap", alignItems: "center" }}>
                   <button disabled={acting} onClick={() => decide("approve")} style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 7, padding: "0.6rem 1.2rem", fontWeight: 600, cursor: "pointer" }}>
                     {acting ? "…" : "Approve & render"}
+                  </button>
+                  <button disabled={acting} onClick={() => decide("regenerate")} title="Re-plan at a higher temperature for a different set of shots"
+                    style={{ background: "#fff", color: ACCENT, border: `1px solid ${ACCENT}`, borderRadius: 7, padding: "0.6rem 1.2rem", fontWeight: 600, cursor: "pointer" }}>
+                    ↻ Regenerate plan
                   </button>
                   <button disabled={acting} onClick={() => decide("reject")} style={{ background: "#fff", color: "#c5221f", border: "1px solid #e0b4b4", borderRadius: 7, padding: "0.6rem 1.2rem", fontWeight: 600, cursor: "pointer" }}>
                     Reject
                   </button>
+                  {regenCount > 0 && <span style={{ fontSize: ".8rem", color: "#888" }}>regenerated {regenCount}× · temp {(regenCount * 0.1).toFixed(1)}</span>}
                 </div>
               </section>
             )}
@@ -360,7 +411,15 @@ export default function VideoRun() {
             {/* Per-shot result cards — stream in as each shot finishes */}
             {shotCards.length > 0 && (
               <section style={{ margin: "1.2rem 0" }}>
-                <h3 style={{ margin: "0 0 .6rem" }}>Shots{job.progress?.shots_total ? ` (${shotCards.length}/${job.progress.shots_total})` : ""}</h3>
+                <h3 style={{ margin: "0 0 .6rem", display: "flex", alignItems: "center", gap: 12 }}>
+                  Shots{job.progress?.shots_total ? ` (${shotCards.length}/${job.progress.shots_total})` : ""}
+                  {job.render_state && job.render_state.shots.length > 0 && (
+                    <button onClick={() => setShowCandidates(true)}
+                      style={{ fontSize: ".8rem", fontWeight: 600, color: ACCENT, border: `1px solid ${ACCENT}`, borderRadius: 6, background: "#fff", padding: "3px 10px", cursor: "pointer" }}>
+                      ◇ Review candidates
+                    </button>
+                  )}
+                </h3>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
                   {shotCards.map((s) => (
                     <div key={s.index} style={{ border: "1px solid #e5e5e5", borderRadius: 8, padding: ".6rem", background: "#fafafa" }}>
@@ -402,6 +461,70 @@ export default function VideoRun() {
           </>
         )}
       </div>
+
+      {/* Candidate review modal — view every take per shot, re-pick, regenerate, reassemble */}
+      {showCandidates && job?.render_state && (
+        <div onClick={() => setShowCandidates(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 50, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "3vh 1rem", overflowY: "auto" }}>
+          <div onClick={(e) => e.stopPropagation()}
+            style={{ background: "#fff", borderRadius: 12, maxWidth: 920, width: "100%", padding: "1.25rem 1.4rem", boxShadow: "0 12px 48px rgba(0,0,0,.32)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h2 style={{ margin: 0 }}>Shots &amp; candidates</h2>
+              <button onClick={() => setShowCandidates(false)} style={{ border: "none", background: "none", fontSize: "1.5rem", lineHeight: 1, cursor: "pointer", color: "#888" }}>×</button>
+            </div>
+            <p style={{ color: "#666", fontSize: ".85rem", margin: ".3rem 0 0" }}>Pick the best take per shot, regenerate more, then re-assemble the final video.</p>
+            {job.status === "editing" && (
+              <p style={{ color: ACCENT, fontSize: ".85rem", display: "flex", alignItems: "center", gap: 6 }}>
+                <span className="va-spinner" /> Working on the home GPU — candidates update live{job.stage ? ` · ${job.stage}` : ""}.
+              </p>
+            )}
+            {err && <p style={{ color: "#c5221f", fontSize: ".85rem" }}>{err}</p>}
+
+            <div style={{ display: "grid", gap: 18, marginTop: 8 }}>
+              {job.render_state.shots.map((s) => {
+                const chosen = selections[s.index] ?? s.chosen_seed;
+                return (
+                  <div key={s.index} style={{ borderTop: "1px solid #eee", paddingTop: 12 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <b style={{ fontSize: ".9rem" }}>Shot {s.index + 1}{s.scene ? ` · ${s.scene}` : ""}</b>
+                      <button disabled={editBusy || job.status === "editing"} onClick={() => regenerate(s.index)}
+                        style={{ fontSize: ".78rem", color: ACCENT, border: `1px solid ${ACCENT}`, borderRadius: 6, background: "#fff", padding: "3px 10px", cursor: editBusy || job.status === "editing" ? "default" : "pointer", opacity: editBusy || job.status === "editing" ? 0.5 : 1 }}>
+                        ↻ Regenerate 2 more
+                      </button>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 10 }}>
+                      {s.candidates.map((c) => {
+                        const on = chosen === c.seed;
+                        return (
+                          <label key={c.seed} style={{ border: `2px solid ${on ? ACCENT : "#e5e5e5"}`, borderRadius: 8, padding: 6, cursor: "pointer", display: "block", background: on ? "#eef4fe" : "#fff" }}>
+                            {candUrls[c.shot_key]
+                              ? <video src={candUrls[c.shot_key]} controls preload="metadata" style={{ width: "100%", borderRadius: 5, background: "#000" }} />
+                              : <div style={{ height: 110, background: "#eee", borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: ".8rem" }}>…</div>}
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5, fontSize: ".75rem" }}>
+                              <input type="radio" name={`sel-${s.index}`} checked={on} onChange={() => setSelections((v) => ({ ...v, [s.index]: c.seed }))} />
+                              <span style={{ color: VERDICT_COLOR[c.verdict] ?? "#777", fontWeight: 600 }}>{c.verdict}</span>
+                              <span style={{ color: "#999" }}>· {c.score.toFixed(2)}</span>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ display: "flex", gap: 12, marginTop: 18, justifyContent: "flex-end", alignItems: "center" }}>
+              <span style={{ fontSize: ".78rem", color: "#888", marginRight: "auto" }}>Regenerate + reassemble run on the home GPU (a few minutes each).</span>
+              <button onClick={() => setShowCandidates(false)} style={{ background: "#fff", border: "1px solid #ccc", borderRadius: 7, padding: "0.6rem 1.1rem", cursor: "pointer", fontWeight: 600, color: "#333" }}>Close</button>
+              <button disabled={editBusy || job.status === "editing"} onClick={reassemble}
+                style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 7, padding: "0.6rem 1.2rem", fontWeight: 600, cursor: editBusy || job.status === "editing" ? "default" : "pointer", opacity: editBusy || job.status === "editing" ? 0.6 : 1 }}>
+                {editBusy ? "…" : "Use selections & re-assemble"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

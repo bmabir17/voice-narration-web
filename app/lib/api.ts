@@ -118,6 +118,14 @@ export interface VideoJobRow {
 export interface FaceRow {
   id: string; name: string; image_ref: string; consent: boolean; created_at: string;
 }
+export interface CandidateInfo {
+  seed: number; shot_key: string; score: number; verdict: string;
+  prompt_adherence: number; artifacts: number; motion_ok: boolean;
+}
+export interface RenderStateShot {
+  index: number; scene: string; chosen_seed: number | null; candidates: CandidateInfo[];
+}
+export interface RenderStateCloud { shots: RenderStateShot[]; }
 export interface VideoJobDetail {
   job_id: string; status: string; stage: string | null;
   progress: { shots_done: number; shots_total: number };
@@ -125,6 +133,7 @@ export interface VideoJobDetail {
   qa: { ok: boolean; checks: Record<string, boolean>; notes: string[] } | null;
   error: string | null; duration_s: number | null; render_seconds: number | null; ai_disclosure: string;
   video_url: string | null; created_at: string; updated_at: string | null; expires_at: string | null;
+  render_state: RenderStateCloud | null;
 }
 
 export const api = {
@@ -133,8 +142,13 @@ export const api = {
     request<{ job_id: string; status: string }>("/v1-video-jobs", { method: "POST", body: JSON.stringify(input) }),
   getVideoJob: (id: string) => request<VideoJobDetail>(`/v1-video-jobs/${id}`),
   listVideoJobs: () => request<{ jobs: VideoJobRow[] }>("/v1-video-jobs"),
-  videoPlanDecision: (id: string, body: { action: "approve" | "reject"; plan?: any }) =>
+  videoPlanDecision: (id: string, body: { action: "approve" | "reject" | "regenerate"; plan?: any }) =>
     request<{ ok: boolean; action: string }>(`/v1-video-jobs/${id}/plan`, { method: "POST", body: JSON.stringify(body) }),
+  // Post-run candidate edits (GPU-bound, run on the home box).
+  regenerateShot: (id: string, shot_index: number, count = 2) =>
+    request<{ ok: boolean; edit_id: string }>(`/v1-video-jobs/${id}/regenerate`, { method: "POST", body: JSON.stringify({ shot_index, count }) }),
+  reassembleVideo: (id: string, selections: Record<number, number>) =>
+    request<{ ok: boolean; edit_id: string }>(`/v1-video-jobs/${id}/reassemble`, { method: "POST", body: JSON.stringify({ selections }) }),
   deleteVideoJob: (id: string) => request<{ ok: boolean }>(`/v1-video-jobs/${id}`, { method: "DELETE" }),
   // Saved-face library (cast reusable across video jobs).
   listFaces: () => request<{ faces: FaceRow[] }>("/v1-faces"),

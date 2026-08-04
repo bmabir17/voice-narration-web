@@ -163,12 +163,15 @@ export default function VideoNew() {
     <main style={{ maxWidth: 820, margin: "0 auto", padding: "2rem 1.25rem" }}>
       <h1 style={{ display: "flex", alignItems: "center", gap: 10 }}>New video <DisclosureBadge /></h1>
       <p style={{ color: "#666", marginTop: 0 }}>A story manuscript → a narrated, subtitled video. Renders on the home GPU; you can review the planned shots before it renders.</p>
-      {usage && (
-        <p style={{ fontSize: ".85rem", marginTop: -4, color: usage.videos_used >= usage.videos_limit ? "#c5221f" : "#888" }}>
-          Videos this month: {usage.videos_used} / {usage.videos_limit}
-          {usage.videos_used >= usage.videos_limit && <> — <Link to="/pricing" style={{ color: ACCENT }}>upgrade for more</Link></>}
-        </p>
-      )}
+      {usage && (() => {
+        const atLimit = usage.videos_used >= usage.videos_limit;
+        return (
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 2, padding: "0.35rem 0.7rem", borderRadius: 999, fontSize: ".82rem", fontWeight: 600, border: `1px solid ${atLimit ? "#e0b4b4" : "#d7e3f7"}`, background: atLimit ? "#fdecea" : "#eef4fe", color: atLimit ? "#c5221f" : ACCENT }}>
+            {usage.videos_used} / {usage.videos_limit} videos this month
+            {atLimit && <Link to="/pricing" style={{ color: "#c5221f", textDecoration: "underline" }}>upgrade</Link>}
+          </div>
+        );
+      })()}
 
       <form onSubmit={submit} style={{ display: "grid", gap: 0 }}>
         <div>
