@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router";
-import { api, uploadFaceImage, type SubmitVideoInput, type VideoJobRow } from "~/lib/api";
+import { api, uploadFaceImage, uploadVideoVoice, type SubmitVideoInput, type VideoJobRow, type FaceRow, type UsageResponse } from "~/lib/api";
 import { supabase } from "~/lib/supabase";
 import { DisclosureBadge } from "~/components/DisclosureBadge";
 
@@ -50,8 +50,13 @@ export default function VideoNew() {
   const [language, setLanguage] = useState("en");
   const [voiceId, setVoiceId] = useState("");
   const [voices, setVoices] = useState<any[]>([]);
+  const [voiceFile, setVoiceFile] = useState<File | null>(null);   // ad-hoc voice sample (one-off)
+  const [voiceConsent, setVoiceConsent] = useState(false);
   const [faces, setFaces] = useState<File[]>([]);
   const [faceConsent, setFaceConsent] = useState(false);
+  const [libFaces, setLibFaces] = useState<FaceRow[]>([]);        // saved cast library
+  const [selectedFaceIds, setSelectedFaceIds] = useState<string[]>([]);
+  const [faceThumbs, setFaceThumbs] = useState<Record<string, string>>({});
   // toggles + review
   const [music, setMusic] = useState(true);
   const [keyframes, setKeyframes] = useState(false);
@@ -73,10 +78,13 @@ export default function VideoNew() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [jobs, setJobs] = useState<VideoJobRow[]>([]);
+  const [usage, setUsage] = useState<UsageResponse | null>(null);
 
   useEffect(() => {
     setSaved(loadPresets());
     api.listVoices().then((r: any) => setVoices(r.voices ?? [])).catch(() => {});
+    api.listFaces().then((r) => setLibFaces(r.faces)).catch(() => {});
+    api.usage().then(setUsage).catch(() => {});
     api.listVideoJobs().then((r) => setJobs(r.jobs)).catch(() => {});
     // Live-update the list straight from each change payload (video_jobs is REPLICA IDENTITY FULL)
     // instead of re-fetching the whole list on every render tick.
@@ -91,6 +99,20 @@ export default function VideoNew() {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);
+
+  // Signed thumbnails for the saved-cast picker (storage RLS lets a user sign their own objects).
+  useEffect(() => {
+    (async () => {
+      const add: Record<string, string> = {};
+      for (const f of libFaces) {
+        if (faceThumbs[f.id]) continue;
+        const { data } = await supabase.storage.from("character-refs").createSignedUrl(f.image_ref, 3600);
+        if (data?.signedUrl) add[f.id] = data.signedUrl;
+      }
+      if (Object.keys(add).length) setFaceThumbs((t) => ({ ...t, ...add }));
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [libFaces]);
 
   function savePreset() {
     const v = style.trim();
@@ -110,16 +132,20 @@ export default function VideoNew() {
     e.preventDefault();
     if (!manuscript.trim()) { setErr("Manuscript is required."); return; }
     if (faces.length && !faceConsent) { setErr("Please confirm you have the right to use these faces."); return; }
+    if (voiceFile && !voiceConsent) { setErr("Please confirm you have the right to use this voice sample."); return; }
     setBusy(true); setErr(null);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       // upload ad-hoc cast faces to Storage → keys
       const character_refs: string[] = [];
       for (const f of faces) { const { ref } = await uploadFaceImage(user!.id, f); character_refs.push(ref); }
+      // upload a one-off narration voice sample if provided (takes precedence over the saved-voice pick)
+      const voice_ref = voiceFile ? (await uploadVideoVoice(user!.id, voiceFile)).ref : null;
       const input: SubmitVideoInput = {
         manuscript: manuscript.trim(), style_brief: style.trim() || null, aspect, fps,
-        language, voice_id: voiceId || null,
-        character_refs, face_consent: faceConsent,
+        language, voice_id: voiceFile ? null : (voiceId || null),
+        voice_ref, voice_consent: voiceFile ? voiceConsent : undefined,
+        character_ids: selectedFaceIds, character_refs, face_consent: faceConsent,
         opts: {
           candidates, crossfade, shots: shots ? Number(shots) : null, music, keyframes, continuity,
           mode, planner_model: plannerModel.trim() || null, remote_llm: remoteLlm,
@@ -137,6 +163,12 @@ export default function VideoNew() {
     <main style={{ maxWidth: 820, margin: "0 auto", padding: "2rem 1.25rem" }}>
       <h1 style={{ display: "flex", alignItems: "center", gap: 10 }}>New video <DisclosureBadge /></h1>
       <p style={{ color: "#666", marginTop: 0 }}>A story manuscript → a narrated, subtitled video. Renders on the home GPU; you can review the planned shots before it renders.</p>
+      {usage && (
+        <p style={{ fontSize: ".85rem", marginTop: -4, color: usage.videos_used >= usage.videos_limit ? "#c5221f" : "#888" }}>
+          Videos this month: {usage.videos_used} / {usage.videos_limit}
+          {usage.videos_used >= usage.videos_limit && <> — <Link to="/pricing" style={{ color: ACCENT }}>upgrade for more</Link></>}
+        </p>
+      )}
 
       <form onSubmit={submit} style={{ display: "grid", gap: 0 }}>
         <div>
@@ -184,16 +216,52 @@ export default function VideoNew() {
           </div>
           <div style={{ ...cell, minWidth: 200 }}>
             <label style={label}>Narration voice</label>
-            <select value={voiceId} onChange={(e) => setVoiceId(e.target.value)} style={field}>
+            <select value={voiceId} onChange={(e) => setVoiceId(e.target.value)} disabled={!!voiceFile} style={field}>
               <option value="">Default voice</option>
               {voices.map((v: any) => <option key={v.voice_id} value={v.voice_id}>{v.voice_id} ({v.language})</option>)}
             </select>
+            <details style={{ marginTop: 6 }} open={!!voiceFile}>
+              <summary style={{ fontSize: ".78rem", color: ACCENT, cursor: "pointer" }}>or upload a voice sample</summary>
+              <input type="file" accept=".wav,.mp3,.m4a,.aac,.flac,.ogg,audio/*"
+                onChange={(e) => setVoiceFile(e.target.files?.[0] ?? null)} style={{ marginTop: 6, fontSize: ".8rem" }} />
+              {voiceFile && (
+                <label style={{ display: "flex", gap: 6, alignItems: "flex-start", marginTop: 6, fontSize: ".78rem", color: "#333" }}>
+                  <input type="checkbox" checked={voiceConsent} onChange={(e) => setVoiceConsent(e.target.checked)} />
+                  <span>I have the right to use this voice. It's cloned for this video only.</span>
+                </label>
+              )}
+            </details>
           </div>
         </div>
 
         {/* Cast faces */}
         <div style={{ marginTop: "1rem", border: "1px solid #e5e5e5", borderRadius: 8, padding: "0.9rem" }}>
           <label style={label}>Cast a person's face <span style={{ fontWeight: 400, color: "#888" }}>— optional; a clear frontal photo appears in the shots</span></label>
+
+          {/* Saved cast library (character_ids) — no per-job consent (captured when saved). */}
+          {libFaces.length > 0 && (
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: ".8rem", color: "#555", marginBottom: 6 }}>Pick from your saved cast:</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {libFaces.map((f) => {
+                  const on = selectedFaceIds.includes(f.id);
+                  return (
+                    <button type="button" key={f.id}
+                      onClick={() => setSelectedFaceIds((s) => on ? s.filter((x) => x !== f.id) : [...s, f.id])}
+                      style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 10px 3px 3px", border: `1px solid ${on ? ACCENT : "#ddd"}`, borderRadius: 999, background: on ? "#eef4fe" : "#fff", cursor: "pointer", font: "inherit", fontSize: ".82rem", color: "#333" }}>
+                      {faceThumbs[f.id]
+                        ? <img src={faceThumbs[f.id]} alt="" style={{ width: 22, height: 22, borderRadius: "50%", objectFit: "cover" }} />
+                        : <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#eee", display: "inline-block" }} />}
+                      {f.name}{on ? " ✓" : ""}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          <div style={{ fontSize: ".8rem", color: "#888", marginBottom: 6 }}>
+            {libFaces.length > 0 ? "…or upload a one-off photo" : "Upload a photo"} — <Link to="/app/faces" style={{ color: ACCENT }}>manage your saved cast</Link>
+          </div>
           <input type="file" accept="image/*" multiple onChange={(e) => setFaces(Array.from(e.target.files ?? []))} />
           {faces.length > 0 && (
             <>

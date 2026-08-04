@@ -72,7 +72,7 @@ export default function VideoRun() {
   // Historical render pace (RLS-scoped to the user). render_s ≈ updated_at − created_at over a
   // completed job; per-shot = render_s / shots_total, averaged per model → estimate = perShot × shots.
   async function loadPace() {
-    const { data } = await supabase.from("video_jobs").select("id,status,created_at,updated_at,progress,opts");
+    const { data } = await supabase.from("video_jobs").select("id,status,created_at,updated_at,progress,opts,render_seconds");
     if (!data) return;
     const all: number[] = []; const byModel: Record<string, number[]> = {};
     for (const j of data as any[]) {
@@ -80,7 +80,11 @@ export default function VideoRun() {
       if (j.status !== "completed" || !j.updated_at) continue;
       const shots = j.progress?.shots_total || 0;
       if (shots <= 0) continue;
-      const secs = (new Date(j.updated_at).getTime() - new Date(j.created_at).getTime()) / 1000;
+      // Prefer the recorded render wall-time (excludes queue wait + HITL pause); fall back to the
+      // created→updated span for jobs rendered before render_seconds existed.
+      const secs = (typeof j.render_seconds === "number" && j.render_seconds > 0)
+        ? j.render_seconds
+        : (new Date(j.updated_at).getTime() - new Date(j.created_at).getTime()) / 1000;
       if (secs <= 0 || secs > 6 * 3600) continue; // ignore absurd gaps (paused-for-review, clock skew)
       const per = secs / shots; all.push(per);
       (byModel[j.opts?.video_model || ""] ||= []).push(per);
@@ -349,6 +353,7 @@ export default function VideoRun() {
                     {job.qa.notes?.length ? ` · ${job.qa.notes.join("; ")}` : ""}
                   </p>
                 )}
+                {job.render_seconds ? <p style={{ fontSize: ".8rem", color: "#999", marginTop: 4 }}>Rendered in {fmtDur(job.render_seconds)}.</p> : null}
               </section>
             )}
 

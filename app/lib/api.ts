@@ -31,6 +31,8 @@ export interface UsageResponse {
   minutes_used: number;
   minutes_limit: number;
   jobs_count: number;
+  videos_used: number;
+  videos_limit: number;
   api_access: boolean;
   max_custom_voices: number;
 }
@@ -113,12 +115,15 @@ export interface VideoJobRow {
   progress: { shots_done: number; shots_total: number };
   style_brief: string | null; created_at: string; expires_at: string | null;
 }
+export interface FaceRow {
+  id: string; name: string; image_ref: string; consent: boolean; created_at: string;
+}
 export interface VideoJobDetail {
   job_id: string; status: string; stage: string | null;
   progress: { shots_done: number; shots_total: number };
   plan: { brief: any; shots: any[] } | null;
   qa: { ok: boolean; checks: Record<string, boolean>; notes: string[] } | null;
-  error: string | null; duration_s: number | null; ai_disclosure: string;
+  error: string | null; duration_s: number | null; render_seconds: number | null; ai_disclosure: string;
   video_url: string | null; created_at: string; updated_at: string | null; expires_at: string | null;
 }
 
@@ -131,6 +136,11 @@ export const api = {
   videoPlanDecision: (id: string, body: { action: "approve" | "reject"; plan?: any }) =>
     request<{ ok: boolean; action: string }>(`/v1-video-jobs/${id}/plan`, { method: "POST", body: JSON.stringify(body) }),
   deleteVideoJob: (id: string) => request<{ ok: boolean }>(`/v1-video-jobs/${id}`, { method: "DELETE" }),
+  // Saved-face library (cast reusable across video jobs).
+  listFaces: () => request<{ faces: FaceRow[] }>("/v1-faces"),
+  registerFace: (input: { id: string; name: string; image_ref: string; consent_checkbox: boolean; consent_statement_version: string }) =>
+    request<{ id: string; status: string }>("/v1-faces", { method: "POST", body: JSON.stringify(input) }),
+  deleteFace: (id: string) => request<{ deleted: string }>(`/v1-faces/${id}`, { method: "DELETE" }),
   getJob: (id: string) => request(`/v1-jobs/${id}`),
   listJobs: (status?: string) => request(`/v1-jobs${status ? `?status=${status}` : ""}`),
   listVoices: () => request<{ voices: unknown[] }>("/v1-voices"),
@@ -180,6 +190,32 @@ export async function uploadFaceImage(userId: string, file: File): Promise<{ ref
   const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
   const ref = `${userId}/face_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const { error } = await supabase.storage.from("character-refs").upload(ref, file, { upsert: true });
+  if (error) throw error;
+  return { ref };
+}
+
+// The likeness-consent statement version the v1-faces endpoint expects at registration.
+export const FACE_CONSENT_VERSION = "face-v1";
+
+// Upload a saved cast face to the private character-refs bucket under {userId}/{id}.<ext>; returns the
+// generated id + storage key to register with api.registerFace. The id is later passed as a video job's
+// character_ids entry.
+export async function uploadCharacterFace(userId: string, file: File): Promise<{ id: string; ref: string }> {
+  const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
+  const id = `face_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  const ref = `${userId}/${id}.${ext}`;
+  const { error } = await supabase.storage.from("character-refs").upload(ref, file, { upsert: true });
+  if (error) throw error;
+  return { id, ref };
+}
+
+// Upload a one-off narration voice sample for a single video job (not saved to the voice library).
+// Lands in the private reference-audio bucket under the user's prefix; returns the storage key to pass
+// as a video job's voice_ref (with voice_consent).
+export async function uploadVideoVoice(userId: string, file: File): Promise<{ ref: string }> {
+  const ext = (file.name.split(".").pop() || "wav").toLowerCase().replace(/[^a-z0-9]/g, "") || "wav";
+  const ref = `${userId}/adhoc_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage.from("reference-audio").upload(ref, file, { upsert: true });
   if (error) throw error;
   return { ref };
 }

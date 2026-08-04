@@ -24,6 +24,7 @@ export default [
       route("video/:id", "routes/app.video.$id.tsx"),
       route("voices", "routes/app.voices.tsx"),
       route("voices/new", "routes/app.voices.new.tsx"),
+      route("faces", "routes/app.faces.tsx"),
       route("billing", "routes/app.billing.tsx"),
       route("admin", "routes/app.admin.tsx"),
       route("admin/users", "routes/app.admin.users.tsx"),
