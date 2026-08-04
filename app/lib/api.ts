@@ -111,7 +111,7 @@ export interface SubmitVideoInput {
 export interface VideoJobRow {
   id: string; status: string; stage: string | null;
   progress: { shots_done: number; shots_total: number };
-  style_brief: string | null; created_at: string;
+  style_brief: string | null; created_at: string; expires_at: string | null;
 }
 export interface VideoJobDetail {
   job_id: string; status: string; stage: string | null;
@@ -119,7 +119,7 @@ export interface VideoJobDetail {
   plan: { brief: any; shots: any[] } | null;
   qa: { ok: boolean; checks: Record<string, boolean>; notes: string[] } | null;
   error: string | null; duration_s: number | null; ai_disclosure: string;
-  video_url: string | null; created_at: string; updated_at: string | null;
+  video_url: string | null; created_at: string; updated_at: string | null; expires_at: string | null;
 }
 
 export const api = {

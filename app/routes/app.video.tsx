@@ -31,6 +31,14 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 function loadPresets(): string[] { try { return JSON.parse(localStorage.getItem(PRESET_KEY) || "[]"); } catch { return []; } }
+// Video assets are auto-deleted 30 days after creation (retention-sweep); show the date so users
+// download in time. Red within the last week / once lapsed.
+function expiryShort(iso: string | null): { label: string; soon: boolean } | null {
+  if (!iso) return null;
+  const days = Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000);
+  if (days <= 0) return { label: "expired", soon: true };
+  return { label: new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }), soon: days <= 7 };
+}
 
 export default function VideoNew() {
   const navigate = useNavigate();
@@ -258,17 +266,21 @@ export default function VideoNew() {
       {jobs.length === 0 ? <p style={{ color: "#666" }}>No videos yet.</p> : (
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: ".92rem" }}>
           <thead><tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
-            <th style={{ padding: "6px 4px" }}>Job</th><th>Style</th><th>Status</th><th>Shots</th><th></th></tr></thead>
+            <th style={{ padding: "6px 4px" }}>Job</th><th>Style</th><th>Status</th><th>Shots</th><th>Expires</th><th></th></tr></thead>
           <tbody>
-            {jobs.map((j) => (
+            {jobs.map((j) => {
+              const ex = expiryShort(j.expires_at);
+              return (
               <tr key={j.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
                 <td style={{ padding: "6px 4px" }}><code>{j.id.slice(0, 14)}</code></td>
                 <td style={{ color: "#666" }}>{j.style_brief ?? "—"}</td>
                 <td><span style={{ color: STATUS_COLOR[j.status] ?? "#666", fontWeight: 600 }}>{j.status}</span></td>
                 <td>{j.progress?.shots_done ?? 0}/{j.progress?.shots_total ?? 0}</td>
+                <td title={j.expires_at ?? ""} style={{ color: ex?.soon ? "#c5221f" : "#999", fontSize: ".85rem" }}>{ex?.label ?? "—"}</td>
                 <td><Link to={`/app/video/${j.id}`} style={{ color: ACCENT }}>open →</Link></td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       )}

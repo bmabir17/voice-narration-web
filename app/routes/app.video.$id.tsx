@@ -30,6 +30,16 @@ function relOffset(ms: number): string {
   const s = Math.max(0, Math.round(ms / 1000));
   return `+${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
+// Assets are auto-deleted 30 days after creation (retention-sweep). Surface the date + a soon/expired
+// warning so users download before it lapses.
+function expiryNote(iso: string | null | undefined) {
+  if (!iso) return null;
+  const days = Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000);
+  const date = new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  const short = new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  if (days <= 0) return { date, short, days: 0, soon: true, expired: true };
+  return { date, short, days, soon: days <= 7, expired: false };
+}
 
 interface Ev { seq: number; stage: string; payload: any; created_at: string; }
 
@@ -211,6 +221,15 @@ export default function VideoRun() {
                     </button>
                   </span>
                 </div>
+                {(() => {
+                  const ex = expiryNote(j.expires_at);
+                  return ex ? (
+                    <div title={`Assets ${ex.expired ? "expired" : "expire"} ${ex.date}`}
+                      style={{ fontSize: ".66rem", color: ex.soon ? "#c5221f" : "#aaa", marginTop: 4 }}>
+                      {ex.expired ? "expired" : `expires ${ex.short}`}
+                    </div>
+                  ) : null;
+                })()}
               </li>
             );
           })}
@@ -248,6 +267,19 @@ export default function VideoRun() {
                 </span>
               </span>
             </div>
+
+            {(() => {
+              const ex = expiryNote(job.expires_at);
+              if (!ex) return null;
+              return (
+                <p style={{ fontSize: ".8rem", margin: "-.4rem 0 1rem", color: ex.soon ? "#c5221f" : "#888" }}>
+                  {ex.soon ? "⚠ " : ""}
+                  {ex.expired ? `Assets expired ${ex.date} and are being removed.`
+                    : `Assets expire on ${ex.date} (${ex.days} day${ex.days === 1 ? "" : "s"} left).`}
+                  {job.status === "completed" && !ex.expired ? " Download the video before then — outputs are auto-deleted to free storage." : ""}
+                </p>
+              );
+            })()}
 
             {err && <p style={{ color: "#c5221f" }}>{err}</p>}
             {failed && <p style={{ color: "#c5221f" }}>{job.status === "cancelled" ? "Cancelled." : `Failed: ${job.error ?? "unknown error"}`}</p>}
