@@ -270,6 +270,7 @@ export interface SupportTicket {
   admin_read_at: string | null;
   created_at: string;
   updated_at: string;
+  plan_tier?: string;
 }
 
 export async function uploadReferenceAudio(userId: string, voiceId: string, file: Blob): Promise<{ ref: string; sha256: string }> {
