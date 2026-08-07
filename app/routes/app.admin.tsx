@@ -38,6 +38,7 @@ export default function Admin() {
         <h1>Control plane</h1>
         <div style={{ display: "flex", gap: "1rem", alignItems: "baseline" }}>
           <Link to="/app/admin/users">Manage users →</Link>
+          <Link to="/app/admin/support">Support tickets →</Link>
           <button onClick={load} style={{ padding: "0.4rem 0.9rem", cursor: "pointer" }}>Refresh</button>
         </div>
       </div>

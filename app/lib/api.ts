@@ -181,6 +181,32 @@ export const api = {
     remove: (id: string) => request(`/v1-admin/users/${id}`, { method: "DELETE" }),
   },
 
+  // Support tickets — user-facing
+  support: {
+    list: (status?: string) =>
+      request<{ tickets: SupportTicket[]; total: number }>(`/v1-support/tickets${status ? `?status=${status}` : ""}`),
+    create: (input: { subject: string; message: string }) =>
+      request<SupportTicket>("/v1-support/tickets", { method: "POST", body: JSON.stringify(input) }),
+    get: (id: string) => request<SupportTicket>(`/v1-support/tickets/${id}`),
+    update: (id: string, patch: { message?: string }) =>
+      request<SupportTicket>(`/v1-support/tickets/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  },
+
+  // Support tickets — admin-facing
+  adminSupport: {
+    list: (params?: { status?: string; q?: string; limit?: number; offset?: number }) => {
+      const qs = new URLSearchParams();
+      if (params?.status) qs.set("status", params.status);
+      if (params?.q) qs.set("q", params.q);
+      if (params?.limit) qs.set("limit", String(params.limit));
+      if (params?.offset) qs.set("offset", String(params.offset));
+      return request<{ tickets: SupportTicket[]; total: number }>(`/v1-admin/support/tickets${qs.toString() ? "?" + qs.toString() : ""}`);
+    },
+    get: (id: string) => request<SupportTicket>(`/v1-admin/support/tickets/${id}`),
+    update: (id: string, patch: { status?: "resolved" | "closed" }) =>
+      request<SupportTicket>(`/v1-admin/support/tickets/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  },
+
   // Public demo playground (no auth) — gated by Turnstile + per-IP rate limits server-side.
   demoPresets: () => request<{ voices: DemoVoice[] }>("/v1-demo"),
   demoSubmit: (input: { text: string; voice_id: string; turnstile_token: string }) =>
@@ -232,6 +258,18 @@ export async function uploadVideoVoice(userId: string, file: File): Promise<{ re
   const { error } = await supabase.storage.from("reference-audio").upload(ref, file, { upsert: true });
   if (error) throw error;
   return { ref };
+}
+
+export interface SupportTicket {
+  id: string;
+  user_id: string;
+  email: string;
+  subject: string;
+  message: string;
+  status: string;
+  admin_read_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export async function uploadReferenceAudio(userId: string, voiceId: string, file: Blob): Promise<{ ref: string; sha256: string }> {
