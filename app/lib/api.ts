@@ -184,12 +184,12 @@ export const api = {
   // Support tickets — user-facing
   support: {
     list: (status?: string) =>
-      request<{ tickets: SupportTicket[]; total: number }>(`/v1-support/tickets${status ? `?status=${status}` : ""}`),
+      request<{ tickets: SupportTicket[]; total: number }>(`/v1/support/tickets${status ? `?status=${status}` : ""}`),
     create: (input: { subject: string; message: string }) =>
-      request<SupportTicket>("/v1-support/tickets", { method: "POST", body: JSON.stringify(input) }),
-    get: (id: string) => request<SupportTicket>(`/v1-support/tickets/${id}`),
+      request<SupportTicket>("/v1/support/tickets", { method: "POST", body: JSON.stringify(input) }),
+    get: (id: string) => request<SupportTicket>(`/v1/support/tickets/${id}`),
     update: (id: string, patch: { message?: string }) =>
-      request<SupportTicket>(`/v1-support/tickets/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+      request<SupportTicket>(`/v1/support/tickets/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   },
 
   // Support tickets — admin-facing
@@ -200,11 +200,11 @@ export const api = {
       if (params?.q) qs.set("q", params.q);
       if (params?.limit) qs.set("limit", String(params.limit));
       if (params?.offset) qs.set("offset", String(params.offset));
-      return request<{ tickets: SupportTicket[]; total: number }>(`/v1-admin/support/tickets${qs.toString() ? "?" + qs.toString() : ""}`);
+      return request<{ tickets: SupportTicket[]; total: number }>(`/v1/admin/support/tickets${qs.toString() ? "?" + qs.toString() : ""}`);
     },
-    get: (id: string) => request<SupportTicket>(`/v1-admin/support/tickets/${id}`),
+    get: (id: string) => request<SupportTicket>(`/v1/admin/support/tickets/${id}`),
     update: (id: string, patch: { status?: "resolved" | "closed" }) =>
-      request<SupportTicket>(`/v1-admin/support/tickets/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+      request<SupportTicket>(`/v1/admin/support/tickets/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   },
 
   // Public demo playground (no auth) — gated by Turnstile + per-IP rate limits server-side.
