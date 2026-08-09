@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router";
-import { api, type SupportTicket } from "~/lib/api";
+import { api, type SupportTicket, type SupportReply } from "~/lib/api";
 import { supabase } from "~/lib/supabase";
 
 export default function AdminSupportDetail() {
@@ -13,7 +13,7 @@ export default function AdminSupportDetail() {
 
   useEffect(() => {
     if (!id) return;
-    api.adminSupport.get(id).then((r: any) => setTicket(r)).catch(() => {});
+    api.adminSupport.get(id).then((r: any) => setTicket(r)).catch((e: any) => setErr(e.message));
   }, [id]);
 
   useEffect(() => {
@@ -21,19 +21,40 @@ export default function AdminSupportDetail() {
     const ch = supabase.channel(`admin-support-${id}`)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "support_tickets", filter: `id=eq.${id}` },
           () => api.adminSupport.get(id).then((r: any) => setTicket(r)).catch(() => {}))
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "support_replies", filter: `ticket_id=eq.${id}` },
+          () => api.adminSupport.get(id).then((r: any) => setTicket(r)).catch(() => {}))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [ticket?.updated_at]);
+  }, [ticket?.replies?.length]);
 
-  if (!ticket) return <main style={{ maxWidth: 800, margin: "0 auto", padding: "2rem 1.25rem" }}><p>Loading…</p></main>;
+  if (!ticket) {
+    return (
+      <main style={{ maxWidth: 800, margin: "0 auto", padding: "2rem 1.25rem" }}>
+        {err ? <p style={{ color: "crimson" }}>{err}</p> : <p>Loading…</p>}
+      </main>
+    );
+  }
+
+  const replies: SupportReply[] = ticket.replies ?? [];
+
+  async function sendReply() {
+    if (!reply.trim() || !id) return;
+    setErr(null); setSaving(true);
+    try {
+      await api.adminSupport.update(id, { message: reply.trim() });
+      setReply("");
+      const r: any = await api.adminSupport.get(id);
+      setTicket(r);
+    } catch (e: any) { setErr(e.message); } finally { setSaving(false); }
+  }
 
   return (
     <main style={{ maxWidth: 800, margin: "0 auto", padding: "2rem 1.25rem" }}>
-      <a href="/app/admin/support" style={{ color: "#1858c7", textDecoration: "none" }}>← Back to tickets</a>
+      <Link to="/app/admin/support" style={{ color: "#1858c7", textDecoration: "none" }}>← Back to tickets</Link>
       <h1 style={{ marginTop: 12 }}>{ticket.subject}</h1>
 
       <div style={{ background: "#f9f9f9", border: "1px solid #e0e0e0", borderRadius: 8, padding: 16, marginBottom: 20, fontSize: "0.88rem" }}>
@@ -49,8 +70,24 @@ export default function AdminSupportDetail() {
         </div>
       </div>
 
-      <div style={{ background: "#e8f0fe", border: "1px solid #d2e3fc", borderRadius: 8, padding: 20, marginBottom: 20 }}>
-        <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{ticket.message}</p>
+      <h3 style={{ margin: "1rem 0 0.6rem" }}>Conversation</h3>
+      <div style={{ border: "1px solid #e0e0e0", borderRadius: 8, padding: "0 16px", marginBottom: 20 }}>
+        <div style={{ padding: "16px 0", borderBottom: "1px solid #f0f0f0" }}>
+          <div style={{ marginBottom: 6, fontSize: "0.8rem", color: "#666" }}>
+            <strong style={{ color: "#333" }}>User</strong> · {new Date(ticket.created_at).toLocaleString()}
+          </div>
+          <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{ticket.message}</p>
+        </div>
+        {replies.map((r) => (
+          <div key={r.id} style={{ padding: "16px 0", borderBottom: "1px solid #f0f0f0" }}>
+            <div style={{ marginBottom: 6, fontSize: "0.8rem", color: "#666" }}>
+              <strong style={{ color: r.sender === "admin" ? "#1858c7" : "#333" }}>
+                {r.sender === "admin" ? "Support team" : "User"}
+              </strong> · {new Date(r.created_at).toLocaleString()}
+            </div>
+            <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{r.message}</p>
+          </div>
+        ))}
       </div>
 
       <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
@@ -64,12 +101,7 @@ export default function AdminSupportDetail() {
           />
         </div>
         <button
-          onClick={async () => {
-            if (!reply.trim() || !id) return;
-            setErr(null); setSaving(true);
-            try { await api.adminSupport.update(id, { message: reply.trim() }); setReply(""); }
-            catch (e: any) { setErr(e.message); } finally { setSaving(false); }
-          }}
+          onClick={sendReply}
           disabled={saving || !reply.trim()}
           style={{ padding: "8px 20px", background: "#1858c7", color: "#fff", border: "none", borderRadius: 6, cursor: saving ? "wait" : "pointer", fontWeight: 500 }}
         >

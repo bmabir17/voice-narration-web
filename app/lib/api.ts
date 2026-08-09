@@ -260,6 +260,14 @@ export async function uploadVideoVoice(userId: string, file: File): Promise<{ re
   return { ref };
 }
 
+export interface SupportReply {
+  id: string;
+  ticket_id: string;
+  sender: "user" | "admin";
+  message: string;
+  created_at: string;
+}
+
 export interface SupportTicket {
   id: string;
   user_id: string;
@@ -271,6 +279,7 @@ export interface SupportTicket {
   created_at: string;
   updated_at: string;
   plan_tier?: string;
+  replies?: SupportReply[];
 }
 
 export async function uploadReferenceAudio(userId: string, voiceId: string, file: Blob): Promise<{ ref: string; sha256: string }> {

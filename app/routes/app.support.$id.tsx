@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
-import { useParams } from "react-router";
-import { api, type SupportTicket } from "~/lib/api";
+import { useParams, Link } from "react-router";
+import { api, type SupportTicket, type SupportReply } from "~/lib/api";
 import { supabase } from "~/lib/supabase";
 
 const STATUS_COLOR: Record<string, string> = {
@@ -19,7 +19,7 @@ export default function SupportDetail() {
 
   useEffect(() => {
     if (!id) return;
-    api.support.get(id).then((r: any) => setTicket(r)).catch(() => {});
+    api.support.get(id).then((r: any) => setTicket(r)).catch((e: any) => setError(e.message));
   }, [id]);
 
   useEffect(() => {
@@ -27,29 +27,33 @@ export default function SupportDetail() {
     const ch = supabase.channel(`support-${id}`)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "support_tickets", filter: `id=eq.${id}` },
           () => api.support.get(id).then((r: any) => setTicket(r)).catch(() => {}))
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "support_replies", filter: `ticket_id=eq.${id}` },
+          () => api.support.get(id).then((r: any) => setTicket(r)).catch(() => {}))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [ticket?.updated_at]);
+  }, [ticket?.replies?.length]);
 
-  if (!ticket) return <main style={{ maxWidth: 800, margin: "0 auto", padding: "2rem 1.25rem" }}><p>Loading…</p></main>;
-
-  const messages: Array<{ role: "user" | "admin"; message: string; created_at: string }> = [];
-  messages.push({ role: "user", message: ticket.message, created_at: ticket.created_at });
-
-  if (ticket.updated_at !== ticket.created_at) {
-    messages.push({ role: "admin", message: "Reply from support team", created_at: ticket.updated_at });
+  if (!ticket) {
+    return (
+      <main style={{ maxWidth: 800, margin: "0 auto", padding: "2rem 1.25rem" }}>
+        {error ? <p style={{ color: "#c5221f" }}>{error}</p> : <p>Loading…</p>}
+      </main>
+    );
   }
+
+  const replies: SupportReply[] = ticket.replies ?? [];
 
   async function handleReply() {
     if (!reply.trim() || !id) return;
     setError(null);
     setSaving(true);
     try {
-      await api.support.update(id, { message: reply.trim() });
+      const r: any = await api.support.update(id, { message: reply.trim() });
+      setTicket(r);
       setReply("");
     } catch (e: any) {
       setError(e.message || "Failed to send reply");
@@ -60,7 +64,7 @@ export default function SupportDetail() {
 
   return (
     <main style={{ maxWidth: 800, margin: "0 auto", padding: "2rem 1.25rem" }}>
-      <a href="/app/support" style={{ color: "#1858c7", textDecoration: "none" }}>← Back to tickets</a>
+      <Link to="/app/support" style={{ color: "#1858c7", textDecoration: "none" }}>← Back to tickets</Link>
       <h1 style={{ marginTop: 12 }}>{ticket.subject}</h1>
       <div style={{ display: "flex", gap: 16, marginBottom: 20, fontSize: 13, color: "#666" }}>
         <span>Status: <strong style={{ color: STATUS_COLOR[ticket.status] ?? "#666" }}>{ticket.status}</strong></span>
@@ -68,25 +72,45 @@ export default function SupportDetail() {
         {ticket.admin_read_at && <span>Read: {new Date(ticket.admin_read_at).toLocaleString()}</span>}
       </div>
 
-      <div style={{ background: "#f9f9f9", border: "1px solid #e0e0e0", borderRadius: 8, padding: 20, marginBottom: 20 }}>
-        <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{ticket.message}</p>
+      <h3 style={{ margin: "1rem 0 0.6rem" }}>Conversation</h3>
+      <div style={{ border: "1px solid #e0e0e0", borderRadius: 8, padding: "0 16px", marginBottom: 20 }}>
+        <div style={{ padding: "16px 0", borderBottom: "1px solid #f0f0f0" }}>
+          <div style={{ marginBottom: 6, fontSize: "0.8rem", color: "#666" }}>
+            <strong style={{ color: "#1a73e8" }}>You</strong> · {new Date(ticket.created_at).toLocaleString()}
+          </div>
+          <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{ticket.message}</p>
+        </div>
+        {replies.map((r) => (
+          <div key={r.id} style={{ padding: "16px 0", borderBottom: "1px solid #f0f0f0" }}>
+            <div style={{ marginBottom: 6, fontSize: "0.8rem", color: "#666" }}>
+              <strong style={{ color: r.sender === "admin" ? "#1a73e8" : "#333" }}>
+                {r.sender === "admin" ? "Support team" : "You"}
+              </strong> · {new Date(r.created_at).toLocaleString()}
+            </div>
+            <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{r.message}</p>
+          </div>
+        ))}
       </div>
 
-      <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
-        <div style={{ flex: 1 }}>
-          <textarea
-            value={reply}
-            onChange={(e) => setReply(e.target.value)}
-            rows={4}
-            style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4, boxSizing: "border-box", fontFamily: "inherit" }}
-            placeholder="Type a reply..."
-          />
+      {ticket.status === "open" ? (
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
+          <div style={{ flex: 1 }}>
+            <textarea
+              value={reply}
+              onChange={(e) => setReply(e.target.value)}
+              rows={4}
+              style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4, boxSizing: "border-box", fontFamily: "inherit" }}
+              placeholder="Type a reply..."
+            />
+          </div>
+          <button onClick={handleReply} disabled={saving || !reply.trim()}
+            style={{ padding: "8px 20px", background: "#1858c7", color: "#fff", border: "none", borderRadius: 6, cursor: saving ? "wait" : "pointer", fontWeight: 500 }}>
+            {saving ? "Sending…" : "Send"}
+          </button>
         </div>
-        <button onClick={handleReply} disabled={saving || !reply.trim()}
-          style={{ padding: "8px 20px", background: "#1858c7", color: "#fff", border: "none", borderRadius: 6, cursor: saving ? "wait" : "pointer", fontWeight: 500 }}>
-          {saving ? "Sending…" : "Send"}
-        </button>
-      </div>
+      ) : (
+        <p style={{ color: "#666", fontSize: "0.9rem" }}>This ticket is {ticket.status}; you can no longer reply.</p>
+      )}
       {error && <p style={{ color: "#c5221f" }}>{error}</p>}
       <div ref={messagesEndRef} />
     </main>
