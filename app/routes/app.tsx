@@ -26,6 +26,7 @@ export default function AppLayout() {
         <Link to="/app/voices/new" style={navLink}>Add voice</Link>
         <Link to="/app/faces" style={navLink}>Cast</Link>
         <Link to="/app/billing" style={navLink}>Billing</Link>
+        <Link to="/app/support" style={navLink}>Support</Link>
         <Link to="/app/admin" style={navLink}>Admin</Link>
         <button onClick={() => supabase.auth.signOut().then(() => navigate("/"))} style={navLinkBtn}>
           Sign out

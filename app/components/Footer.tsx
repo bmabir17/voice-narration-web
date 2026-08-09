@@ -11,6 +11,7 @@ export function Footer() {
                      justifyContent: "center", color: "#777", fontSize: ".85rem" }}>
       <Link to="/pricing" style={LINK}>Pricing</Link>
       <Link to="/docs" style={LINK}>Docs</Link>
+      <Link to="/app/support" style={LINK}>Support</Link>
       <Link to="/terms" style={LINK}>Terms of Service</Link>
       <Link to="/privacy" style={LINK}>Privacy Notice</Link>
       <Link to="/refunds" style={LINK}>Refund Policy</Link>

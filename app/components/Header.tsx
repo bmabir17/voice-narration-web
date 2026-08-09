@@ -25,6 +25,7 @@ export function Header() {
       <Link to="/pricing" style={navLink}>Pricing</Link>
       <Link to="/docs" style={navLink}>Docs</Link>
       <Link to="/blog" style={navLink}>Blog</Link>
+      <Link to="/app/support" style={navLink}>Support</Link>
       {authed ? (
         <>
           <button onClick={signOut} style={navLinkBtn}>Sign out</button>
