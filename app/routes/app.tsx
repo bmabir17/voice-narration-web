@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { Link, Outlet, useNavigate } from "react-router";
 import { supabase, currentSession } from "~/lib/supabase";
 import { NavShell, navCta, navLink, navLinkBtn } from "~/components/NavBar";
+import { api } from "~/lib/api";
 
 // Authed layout + client-side route guard (the app routes are non-indexed; the 404.html SPA
 // fallback serves them). Server RLS is the real security boundary.
 export default function AppLayout() {
   const navigate = useNavigate();
   const [ready, setReady] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     currentSession().then((s) => {
@@ -15,6 +17,13 @@ export default function AppLayout() {
       else setReady(true);
     });
   }, [navigate]);
+
+  // Admin visibility is gated server-side by ADMIN_USER_IDS (deny-by-default); probe that same
+  // endpoint here so the nav only shows Admin to operators.
+  useEffect(() => {
+    if (!ready) return;
+    api.adminCheck().then(() => setIsAdmin(true)).catch(() => setIsAdmin(false));
+  }, [ready]);
 
   if (!ready) return <main style={{ padding: "3rem" }}><p>Loading…</p></main>;
   return (
@@ -27,7 +36,7 @@ export default function AppLayout() {
         <Link to="/app/faces" style={navLink}>Cast</Link>
         <Link to="/app/billing" style={navLink}>Billing</Link>
         <Link to="/app/support" style={navLink}>Support</Link>
-        <Link to="/app/admin" style={navLink}>Admin</Link>
+        {isAdmin && <Link to="/app/admin" style={navLink}>Admin</Link>}
         <button onClick={() => supabase.auth.signOut().then(() => navigate("/"))} style={navLinkBtn}>
           Sign out
         </button>

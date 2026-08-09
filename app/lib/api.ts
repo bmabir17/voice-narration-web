@@ -168,6 +168,8 @@ export const api = {
 
   // Admin overview (operators only; server-gated by ADMIN_USER_IDS). Reads Postgres — no Redis cost.
   admin: () => request<AdminOverview>("/v1-admin"),
+  // Cheap admin-gate probe (same allowlist): 200 {admin:true} for operators, 403 for everyone else.
+  adminCheck: () => request<{ admin: true }>("/v1-admin/me"),
 
   // Admin: user + subscription management (same allowlist gate).
   adminUsers: {
