@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router";
-import { api, type SupportTicket, type SupportReply } from "~/lib/api";
+import { api, type SupportTicket, type SupportReply, type SupportAttachment } from "~/lib/api";
 import { supabase } from "~/lib/supabase";
 
 export default function AdminSupportDetail() {
@@ -41,6 +41,7 @@ export default function AdminSupportDetail() {
   }
 
   const replies: SupportReply[] = ticket.replies ?? [];
+  const attachments: SupportAttachment[] = ticket.attachments ?? [];
 
   async function sendReply() {
     if (!reply.trim() || !id) return;
@@ -102,6 +103,20 @@ export default function AdminSupportDetail() {
             <strong style={{ color: "#333" }}>User</strong> · {new Date(ticket.created_at).toLocaleString()}
           </div>
           <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{ticket.message}</p>
+        {attachments.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 12 }}>
+            {attachments.map((a) => {
+              if (!a.url) return null;
+              return a.content_type.startsWith("image/")
+                ? <a key={a.id} href={a.url} target="_blank" rel="noreferrer" title={a.file_name}>
+                    <img src={a.url} alt={a.file_name} style={{ maxWidth: 260, maxHeight: 200, borderRadius: 8, border: "1px solid #e0e0e0" }} />
+                  </a>
+                : a.content_type.startsWith("video/")
+                  ? <video key={a.id} src={a.url} controls style={{ maxWidth: 260, maxHeight: 200, borderRadius: 8 }} title={a.file_name} />
+                  : <a key={a.id} href={a.url} target="_blank" rel="noreferrer" style={{ color: "#1858c7" }}>{a.file_name}</a>;
+            })}
+          </div>
+        )}
         </div>
         {replies.map((r) => (
           <div key={r.id} style={{ padding: "16px 0", borderBottom: "1px solid #f0f0f0" }}>

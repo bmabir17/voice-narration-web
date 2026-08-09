@@ -187,7 +187,7 @@ export const api = {
   support: {
     list: (status?: string) =>
       request<{ tickets: SupportTicket[]; total: number }>(`/support-tickets${status ? `?status=${status}` : ""}`),
-    create: (input: { subject: string; message: string }) =>
+    create: (input: { subject: string; message: string; attachments?: Array<{ file_ref: string; file_name: string; content_type: string; size_bytes: number }> }) =>
       request<SupportTicket>("/support-tickets", { method: "POST", body: JSON.stringify(input) }),
     get: (id: string) => request<SupportTicket>(`/support-tickets/${id}`),
     update: (id: string, patch: { message?: string }) =>
@@ -262,12 +262,35 @@ export async function uploadVideoVoice(userId: string, file: File): Promise<{ re
   return { ref };
 }
 
+// Upload a support-ticket attachment (image/video) to the private support-attachments bucket under
+// the owner's prefix. The ref is later passed to api.support.create; the server records it in
+// support_attachments and retention-sweep deletes the object 1 month after the ticket is closed.
+export async function uploadSupportAttachment(userId: string, file: File): Promise<{ ref: string }> {
+  const ext = (file.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
+  const ref = `${userId}/att_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage.from("support-attachments").upload(ref, file, { upsert: true });
+  if (error) throw error;
+  return { ref };
+}
+
 export interface SupportReply {
   id: string;
   ticket_id: string;
   sender: "user" | "admin";
   message: string;
   created_at: string;
+}
+
+export interface SupportAttachment {
+  id: string;
+  ticket_id: string;
+  user_id: string;
+  file_ref: string;
+  file_name: string;
+  content_type: string;
+  size_bytes: number;
+  created_at: string;
+  url?: string | null;
 }
 
 export interface SupportTicket {
@@ -282,6 +305,7 @@ export interface SupportTicket {
   updated_at: string;
   plan_tier?: string;
   replies?: SupportReply[];
+  attachments?: SupportAttachment[];
 }
 
 export async function uploadReferenceAudio(userId: string, voiceId: string, file: Blob): Promise<{ ref: string; sha256: string }> {
