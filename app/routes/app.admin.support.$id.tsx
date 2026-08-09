@@ -8,6 +8,7 @@ export default function AdminSupportDetail() {
   const [ticket, setTicket] = useState<SupportTicket | null>(null);
   const [reply, setReply] = useState("");
   const [saving, setSaving] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -52,14 +53,38 @@ export default function AdminSupportDetail() {
     } catch (e: any) { setErr(e.message); } finally { setSaving(false); }
   }
 
+  async function resolveTicket() {
+    if (!id || ticket.status === "resolved") return;
+    setErr(null); setResolving(true);
+    try {
+      await api.adminSupport.update(id, { status: "resolved" });
+      const r: any = await api.adminSupport.get(id);
+      setTicket(r);
+    } catch (e: any) { setErr(e.message); } finally { setResolving(false); }
+  }
+
   return (
     <main style={{ maxWidth: 800, margin: "0 auto", padding: "2rem 1.25rem" }}>
       <Link to="/app/admin/support" style={{ color: "#1858c7", textDecoration: "none" }}>← Back to tickets</Link>
       <h1 style={{ marginTop: 12 }}>{ticket.subject}</h1>
 
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+        <span style={{ background: "#f9f9f9", border: "1px solid #e0e0e0", borderRadius: 8, padding: 12, fontSize: "0.88rem" }}>
+          <span style={{ fontWeight: 600 }}>Status:</span>{" "}{ticket.status}
+        </span>
+        {ticket.status !== "resolved" && (
+          <button
+            onClick={resolveTicket}
+            disabled={resolving}
+            style={{ padding: "10px 20px", background: "#2e7d32", color: "#fff", border: "none", borderRadius: 6, cursor: resolving ? "wait" : "pointer", fontWeight: 500 }}
+          >
+            {resolving ? "Resolving…" : "Resolve Ticket"}
+          </button>
+        )}
+      </div>
+
       <div style={{ background: "#f9f9f9", border: "1px solid #e0e0e0", borderRadius: 8, padding: 16, marginBottom: 20, fontSize: "0.88rem" }}>
         <div style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: "8px 16px" }}>
-          <strong>Status:</strong><span>{ticket.status}</span>
           <strong>Email:</strong><span>{ticket.email}</span>
           <strong>Plan:</strong><span>{ticket.plan_tier}</span>
           <strong>Created:</strong><span>{new Date(ticket.created_at).toLocaleString()}</span>
