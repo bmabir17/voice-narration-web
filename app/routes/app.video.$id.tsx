@@ -62,6 +62,12 @@ export default function VideoRun() {
   const [candUrls, setCandUrls] = useState<Record<string, string>>({});      // candidate shot_key → URL
   // Which edit is in flight (drives the per-button spinner). Cleared when the worker leaves "editing".
   const [pending, setPending] = useState<{ kind: "regen"; shot: number } | { kind: "reasm" } | null>(null);
+  // Editable per-shot regenerate options (prompt/motion/count/quality/distill) — mirrors the local
+  // UI's collapsed "regenerate options" panel; keyed by shot index.
+  const [regenOpts, setRegenOpts] = useState<Record<number, {
+    visual_prompt: string; motion: string; negative_prompt: string;
+    count: number; quality: boolean; causvid_strength: number;
+  }>>({});
   // ETA model: avg render seconds-per-shot from past completed jobs, keyed by video model.
   const [perShot, setPerShot] = useState<{ byModel: Record<string, number>; global: number | null } | null>(null);
   const [currentModel, setCurrentModel] = useState("");
@@ -179,6 +185,27 @@ export default function VideoRun() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job?.render_state]);
 
+  // Seed the editable regenerate options from the persisted ShotEdit fields on first open.
+  useEffect(() => {
+    const rs = job?.render_state;
+    if (!rs) return;
+    setRegenOpts((prev) => {
+      const next = { ...prev };
+      for (const s of rs.shots) {
+        if (!(s.index in next)) {
+          next[s.index] = {
+            visual_prompt: s.visual_prompt ?? "",
+            motion: s.motion ?? "",
+            negative_prompt: s.negative_prompt ?? "",
+            count: 2, quality: false, causvid_strength: 1.0,
+          };
+        }
+      }
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job?.render_state]);
+
   // Mint signed URLs for every candidate clip so the modal can play them.
   useEffect(() => {
     const rs = job?.render_state;
@@ -198,7 +225,17 @@ export default function VideoRun() {
 
   async function regenerate(shotIndex: number) {
     setErr(null); setPending({ kind: "regen", shot: shotIndex }); // held until the worker finishes (below)
-    try { await api.regenerateShot(id, shotIndex, 2); }
+    try {
+      const o = regenOpts[shotIndex];
+      await api.regenerateShot(id, shotIndex, {
+        count: o?.count ?? 2,
+        visual_prompt: o?.visual_prompt,
+        motion: o?.motion,
+        negative_prompt: o?.negative_prompt,
+        quality: o?.quality,
+        causvid_strength: o?.causvid_strength,
+      });
+    }
     catch (e: any) { setErr(e.message); setPending(null); }
   }
   async function reassemble() {
@@ -501,7 +538,7 @@ export default function VideoRun() {
                         return (
                           <button disabled={busy} onClick={() => regenerate(s.index)}
                             style={{ fontSize: ".78rem", color: ACCENT, border: `1px solid ${ACCENT}`, borderRadius: 6, background: "#fff", padding: "3px 10px", display: "inline-flex", alignItems: "center", gap: 6, cursor: busy ? "default" : "pointer", opacity: busy && !mine ? 0.5 : 1 }}>
-                            {mine ? <><span className="va-spinner" /> Regenerating…</> : "↻ Regenerate 2 more"}
+                            {mine ? <><span className="va-spinner" /> Regenerating…</> : `↻ Regenerate ${regenOpts[s.index]?.count ?? 2} more`}
                           </button>
                         );
                       })()}
@@ -523,6 +560,64 @@ export default function VideoRun() {
                         );
                       })}
                     </div>
+                    {/* Collapsed regenerate options — editable prompt/motion feed the regenerated takes. */}
+                    <details style={{ marginTop: 10, fontSize: ".83rem" }}>
+                      <summary style={{ cursor: "pointer", color: "#555", userSelect: "none" }}>
+                        ▸ Regenerate options <span style={{ color: "#999" }}>— edit the prompt &amp; motion used for new takes</span>
+                      </summary>
+                      <div style={{ border: "1px solid #eee", borderRadius: 8, padding: 10, marginTop: 8, display: "grid", gap: 8 }}>
+                        <label style={miniLabel}>Visual prompt</label>
+                        <textarea
+                          value={regenOpts[s.index]?.visual_prompt ?? ""}
+                          onChange={(e) => setRegenOpts((v) => ({ ...v, [s.index]: { ...(v[s.index] ?? defaultRegenOpts(s)), visual_prompt: e.target.value } }))}
+                          rows={2}
+                          style={miniField}
+                        />
+                        <label style={miniLabel}>Motion</label>
+                        <input
+                          type="text"
+                          value={regenOpts[s.index]?.motion ?? ""}
+                          onChange={(e) => setRegenOpts((v) => ({ ...v, [s.index]: { ...(v[s.index] ?? defaultRegenOpts(s)), motion: e.target.value } }))}
+                          placeholder="e.g. slow push-in"
+                          style={miniField}
+                        />
+                        <label style={miniLabel}>Negative prompt <span style={{ fontWeight: 400, color: "#999" }}>(mostly effective in quality mode)</span></label>
+                        <input
+                          type="text"
+                          value={regenOpts[s.index]?.negative_prompt ?? ""}
+                          onChange={(e) => setRegenOpts((v) => ({ ...v, [s.index]: { ...(v[s.index] ?? defaultRegenOpts(s)), negative_prompt: e.target.value } }))}
+                          style={miniField}
+                        />
+                        <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
+                          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: ".82rem", color: "#333" }}>
+                            Count
+                            <input
+                              type="number" min={1} max={4}
+                              value={regenOpts[s.index]?.count ?? 2}
+                              onChange={(e) => setRegenOpts((v) => ({ ...v, [s.index]: { ...(v[s.index] ?? defaultRegenOpts(s)), count: Math.min(4, Math.max(1, +e.target.value)) } }))}
+                              style={{ ...miniField, width: 64 }}
+                            />
+                          </label>
+                          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: ".82rem", color: "#333", cursor: "pointer" }}>
+                            <input
+                              type="checkbox"
+                              checked={regenOpts[s.index]?.quality ?? false}
+                              onChange={(e) => setRegenOpts((v) => ({ ...v, [s.index]: { ...(v[s.index] ?? defaultRegenOpts(s)), quality: e.target.checked } }))}
+                            />
+                            higher quality (slower)
+                          </label>
+                          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: ".82rem", color: "#333" }}>
+                            Distill
+                            <input
+                              type="number" min={0} max={1} step={0.1}
+                              value={regenOpts[s.index]?.causvid_strength ?? 1.0}
+                              onChange={(e) => setRegenOpts((v) => ({ ...v, [s.index]: { ...(v[s.index] ?? defaultRegenOpts(s)), causvid_strength: Math.min(1, Math.max(0, +e.target.value)) } }))}
+                              style={{ ...miniField, width: 64 }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </details>
                   </div>
                 );
               })}
@@ -550,6 +645,17 @@ export default function VideoRun() {
 }
 
 const VERDICT_COLOR: Record<string, string> = { pass: "#137333", passed: "#137333", revise: "#8a6d00", reject: "#c5221f" };
+
+// Fallback regenerate opts used whenever a shot block's local state hasn't been seeded yet.
+interface RegOp { visual_prompt: string; motion: string; negative_prompt: string; count: number; quality: boolean; causvid_strength: number; }
+function defaultRegenOpts(s: { visual_prompt?: string; motion?: string; negative_prompt?: string }): RegOp {
+  return {
+    visual_prompt: s.visual_prompt ?? "",
+    motion: s.motion ?? "",
+    negative_prompt: s.negative_prompt ?? "",
+    count: 2, quality: false, causvid_strength: 1.0,
+  };
+}
 const miniBtn = (disabled: boolean): React.CSSProperties => ({
   padding: "2px 8px", fontSize: ".72rem", fontWeight: 600, borderRadius: 5, border: "1px solid #ccc",
   background: "#fff", color: disabled ? "#aaa" : "#333", cursor: disabled ? "default" : "pointer",

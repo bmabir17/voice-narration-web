@@ -124,6 +124,7 @@ export interface CandidateInfo {
 }
 export interface RenderStateShot {
   index: number; scene: string; chosen_seed: number | null; candidates: CandidateInfo[];
+  visual_prompt?: string; motion?: string; negative_prompt?: string;
 }
 export interface RenderStateCloud { shots: RenderStateShot[]; }
 export interface VideoJobDetail {
@@ -145,8 +146,12 @@ export const api = {
   videoPlanDecision: (id: string, body: { action: "approve" | "reject" | "regenerate"; plan?: any }) =>
     request<{ ok: boolean; action: string }>(`/v1-video-jobs/${id}/plan`, { method: "POST", body: JSON.stringify(body) }),
   // Post-run candidate edits (GPU-bound, run on the home box).
-  regenerateShot: (id: string, shot_index: number, count = 2) =>
-    request<{ ok: boolean; edit_id: string }>(`/v1-video-jobs/${id}/regenerate`, { method: "POST", body: JSON.stringify({ shot_index, count }) }),
+  regenerateShot: (id: string, shot_index: number, opts?: {
+    count?: number; visual_prompt?: string; motion?: string; negative_prompt?: string;
+    quality?: boolean; causvid_strength?: number;
+  }) => request<{ ok: boolean; edit_id: string }>(`/v1-video-jobs/${id}/regenerate`, {
+    method: "POST", body: JSON.stringify({ shot_index, ...(opts ?? {}) }),
+  }),
   reassembleVideo: (id: string, selections: Record<number, number>) =>
     request<{ ok: boolean; edit_id: string }>(`/v1-video-jobs/${id}/reassemble`, { method: "POST", body: JSON.stringify({ selections }) }),
   deleteVideoJob: (id: string) => request<{ ok: boolean }>(`/v1-video-jobs/${id}`, { method: "DELETE" }),
