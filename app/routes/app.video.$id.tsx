@@ -185,26 +185,42 @@ export default function VideoRun() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job?.render_state]);
 
-  // Seed the editable regenerate options from the persisted ShotEdit fields on first open.
+  // Seed the editable regenerate options from the persisted ShotEdit fields on first open. The
+  // render_state ships visual_prompt/motion only for jobs rendered after that was added, so fall
+  // back to the stored plan shot (every job has it) — both describe what the candidates were made from.
   useEffect(() => {
     const rs = job?.render_state;
-    if (!rs) return;
+    const plan = job?.plan?.shots ?? [];
+    if (!rs && !plan.length) return;
     setRegenOpts((prev) => {
       const next = { ...prev };
-      for (const s of rs.shots) {
+      const all = rs?.shots ?? [];
+      for (const s of all) {
         if (!(s.index in next)) {
+          const planned = plan.find((p: any) => p.index === s.index);
           next[s.index] = {
-            visual_prompt: s.visual_prompt ?? "",
-            motion: s.motion ?? "",
-            negative_prompt: s.negative_prompt ?? "",
+            visual_prompt: s.visual_prompt ?? planned?.visual_prompt ?? "",
+            motion: s.motion ?? planned?.motion ?? "",
+            negative_prompt: s.negative_prompt ?? planned?.negative_prompt ?? "",
             count: 2, quality: false, causvid_strength: 1.0,
           };
         }
       }
+      // Jobs whose render_state predates the prompt fields: use the approved plan instead.
+      plan.forEach((p: any) => {
+        if (!(p.index in next)) {
+          next[p.index] = {
+            visual_prompt: p.visual_prompt ?? "",
+            motion: p.motion ?? "",
+            negative_prompt: p.negative_prompt ?? "",
+            count: 2, quality: false, causvid_strength: 1.0,
+          };
+        }
+      });
       return next;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [job?.render_state]);
+  }, [job?.render_state, job?.plan]);
 
   // Mint signed URLs for every candidate clip so the modal can play them.
   useEffect(() => {
