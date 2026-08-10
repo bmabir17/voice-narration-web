@@ -22,6 +22,7 @@ export function Header() {
   return (
     <NavShell>
       <Link to="/demo" style={navLink}>Demo</Link>
+      <Link to="/solutions" style={navLink}>Solutions</Link>
       <Link to="/pricing" style={navLink}>Pricing</Link>
       <Link to="/docs" style={navLink}>Docs</Link>
       <Link to="/blog" style={navLink}>Blog</Link>

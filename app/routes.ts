@@ -8,6 +8,7 @@ export default [
     route("demo", "routes/demo.tsx"),
     route("docs", "routes/docs.tsx"),
     route("blog", "routes/blog._index.tsx"),
+    route("solutions", "routes/solutions.tsx"),
     route("solutions/:slug", "routes/solutions.$slug.tsx"),
     route("terms", "routes/terms.tsx"),
     route("privacy", "routes/privacy.tsx"),

@@ -14,6 +14,7 @@ export default {
       "/terms", "/privacy", "/refunds",
       "/blog", // blog index; per-post paths added as MDX posts land
       "/docs",
+      "/solutions",
       ...seoMatrixPaths(),
     ];
   },
