@@ -131,6 +131,7 @@ export interface VideoJobDetail {
   job_id: string; status: string; stage: string | null;
   progress: { shots_done: number; shots_total: number };
   plan: { brief: any; shots: any[] } | null;
+  manuscript: string | null; style_brief: string | null;
   qa: { ok: boolean; checks: Record<string, boolean>; notes: string[] } | null;
   error: string | null; duration_s: number | null; render_seconds: number | null; ai_disclosure: string;
   video_url: string | null; created_at: string; updated_at: string | null; expires_at: string | null;

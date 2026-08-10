@@ -58,6 +58,8 @@ export default function VideoRun() {
   const [shotUrls, setShotUrls] = useState<Record<string, string>>({}); // shot_key → signed preview URL
   // Candidate review modal (post-run: view all candidates, re-pick, regenerate, reassemble).
   const [showCandidates, setShowCandidates] = useState(false);
+  // Plan viewer modal — shows the generated plan + the user's manuscript (opened from the Plan tag).
+  const [showPlan, setShowPlan] = useState(false);
   const [selections, setSelections] = useState<Record<number, number>>({}); // shot_index → chosen seed
   const [candUrls, setCandUrls] = useState<Record<string, string>>({});      // candidate shot_key → URL
   // Which edit is in flight (drives the per-button spinner). Cleared when the worker leaves "editing".
@@ -126,6 +128,8 @@ export default function VideoRun() {
           setJob((prev) => ({
             job_id: id, status: r.status, stage: r.stage ?? null, progress: r.progress,
             plan: r.plan ?? null, qa: r.qa ?? null, error: r.error ?? null, duration_s: r.duration_s ?? null,
+            manuscript: r.manuscript ?? prev?.manuscript ?? null,
+            style_brief: r.style_brief ?? prev?.style_brief ?? null,
             render_seconds: r.render_seconds ?? prev?.render_seconds ?? null,
             ai_disclosure: r.ai_disclosure, video_url: prev?.video_url ?? null,
             created_at: r.created_at, updated_at: r.updated_at ?? null, expires_at: r.expires_at ?? null,
@@ -385,6 +389,16 @@ export default function VideoRun() {
               {STAGES.map((s, i) => {
                 const done = i < activeIdx || job.status === "completed";
                 const active = i === activeIdx && !TERMINAL.has(job.status);
+                if (s === "Plan" && job.plan) {
+                  return (
+                    <button key={s} onClick={() => setShowPlan(true)} title="View the generated plan + your manuscript"
+                      style={{
+                        padding: "0.3rem 0.7rem", borderRadius: 999, fontSize: ".8rem", fontWeight: 600, border: "none", cursor: "pointer",
+                        background: done ? "#e6f4ea" : active ? ACCENT : "#f1f1f1",
+                        color: done ? "#137333" : active ? "#fff" : "#999",
+                      }}>{s} 🔍</button>
+                  );
+                }
                 return (
                   <span key={s} style={{
                     padding: "0.3rem 0.7rem", borderRadius: 999, fontSize: ".8rem", fontWeight: 600,
@@ -653,6 +667,56 @@ export default function VideoRun() {
                 );
               })()}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Plan + manuscript viewer modal — opened from the Plan tag */}
+      {showPlan && job?.plan && (
+        <div onClick={() => setShowPlan(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 50, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "3vh 1rem", overflowY: "auto" }}>
+          <div onClick={(e) => e.stopPropagation()}
+            style={{ background: "#fff", borderRadius: 12, maxWidth: 860, width: "100%", padding: "1.25rem 1.4rem", boxShadow: "0 12px 48px rgba(0,0,0,.32)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h2 style={{ margin: 0 }}>Generated plan</h2>
+              <button onClick={() => setShowPlan(false)} style={{ border: "none", background: "none", fontSize: "1.5rem", lineHeight: 1, cursor: "pointer", color: "#888" }}>×</button>
+            </div>
+
+            {(() => {
+              const b = job.plan!.brief;
+              return (
+                <section style={{ border: "1px solid #e5e5e5", borderRadius: 8, padding: "0.8rem 1rem", marginTop: "0.8rem" }}>
+                  <h3 style={{ margin: 0, fontSize: ".9rem", color: "#333" }}>Creative brief</h3>
+                  <p style={{ margin: ".4rem 0 0", fontSize: ".85rem", color: "#444" }}><b>Logline:</b> {b?.logline ?? "—"}</p>
+                  {b?.tone ? <p style={{ margin: ".2rem 0 0", fontSize: ".85rem", color: "#444" }}><b>Tone:</b> {b.tone}</p> : null}
+                  {b?.visual_style ? <p style={{ margin: ".2rem 0 0", fontSize: ".85rem", color: "#444" }}><b>Visual style:</b> {b.visual_style}</p> : null}
+                  {b?.palette ? <p style={{ margin: ".2rem 0 0", fontSize: ".85rem", color: "#444" }}><b>Palette:</b> {b.palette}</p> : null}
+                  {b?.pacing ? <p style={{ margin: ".2rem 0 0", fontSize: ".85rem", color: "#444" }}><b>Pacing:</b> {b.pacing}</p> : null}
+                </section>
+              );
+            })()}
+
+            <h3 style={{ margin: "1rem 0 .5rem", fontSize: ".9rem", color: "#333" }}>Shots ({job.plan.shots.length})</h3>
+            <div style={{ display: "grid", gap: "0.7rem" }}>
+              {job.plan.shots.map((s, i) => (
+                <div key={s.index ?? i} style={{ border: "1px solid #e5e5e5", borderRadius: 8, padding: "0.7rem" }}>
+                  <div style={{ fontWeight: 600, fontSize: ".85rem", color: "#555" }}>Shot {(s.index ?? i) + 1}{s.scene ? ` · ${s.scene}` : ""}</div>
+                  {s.narration ? <p style={{ margin: ".4rem 0 0", fontSize: ".84rem", color: "#333" }}><b>Narration:</b> {s.narration}</p> : null}
+                  {s.visual_prompt ? <p style={{ margin: ".3rem 0 0", fontSize: ".82rem", color: "#555" }}><b>Visual prompt:</b> {s.visual_prompt}</p> : null}
+                  {s.motion ? <p style={{ margin: ".3rem 0 0", fontSize: ".82rem", color: "#555" }}><b>Motion:</b> {s.motion}</p> : null}
+                  {s.negative_prompt ? <p style={{ margin: ".3rem 0 0", fontSize: ".82rem", color: "#999" }}><b>Negative prompt:</b> {s.negative_prompt}</p> : null}
+                </div>
+              ))}
+            </div>
+
+            {job.manuscript ? (
+              <>
+                <h3 style={{ margin: "1rem 0 .5rem", fontSize: ".9rem", color: "#333" }}>Your manuscript</h3>
+                <div style={{ border: "1px solid #e5e5e5", borderRadius: 8, padding: "0.8rem 1rem", whiteSpace: "pre-wrap", fontSize: ".85rem", color: "#333", maxHeight: 260, overflowY: "auto" }}>
+                  {job.manuscript}
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
       )}
