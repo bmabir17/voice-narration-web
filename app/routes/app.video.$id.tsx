@@ -256,7 +256,7 @@ export default function VideoRun() {
   }
   async function reassemble() {
     setErr(null); setPending({ kind: "reasm" });
-    try { await api.reassembleVideo(id, selections); }
+    try { await api.reassembleVideo(id, selections); setShowCandidates(false); }
     catch (e: any) { setErr(e.message); setPending(null); }
   }
   // The POST returns fast but the render runs on the GPU; keep the spinner until the job leaves "editing".
