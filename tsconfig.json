@@ -8,7 +8,7 @@
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "types": ["@react-router/dev"],
+    "types": [],
     "paths": { "~/*": ["./app/*"] }
   },
   "include": ["app", "react-router.config.ts", "vite.config.ts"]
