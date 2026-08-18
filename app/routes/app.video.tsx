@@ -310,6 +310,7 @@ export default function VideoNew() {
                   <select value={videoModel} onChange={(e) => setVideoModel(e.target.value)} style={field}>
                     <option value="">WAN — default (1.3B fast, 5B hero)</option>
                     <option value="ltx2_t2v">LTX-2.3 22B — high quality, slow</option>
+                    <option value="minimax_h3_t2v">MiniMax H3 — premium quality + native audio, slowest</option>
                   </select></div>
                 <div style={cell}><label style={label}>Orchestration</label>
                   <select value={mode} onChange={(e) => setMode(e.target.value as any)} style={field}>
