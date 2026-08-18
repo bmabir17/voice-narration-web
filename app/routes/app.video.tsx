@@ -6,6 +6,8 @@ import { DisclosureBadge } from "~/components/DisclosureBadge";
 
 const ACCENT = "#1a73e8";
 const BUILTIN_STYLES = [
+  "Lego world",
+  "Ghibli-inspired",
   "moody cinematic, cold blue palette, 35mm film grain",
   "warm pixar-style 3d render, soft morning light",
   "epic fantasy concept art, dramatic lighting, painterly",
