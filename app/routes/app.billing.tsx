@@ -79,7 +79,7 @@ export default function Billing() {
   return (
     <main style={{ maxWidth: 640, margin: "0 auto", padding: "2rem 1.25rem" }}>
       <h1>Billing
-        <Tip title="Billing">Your plan, monthly usage and subscription. Usage bars show how much of your plan you've used this period; upgrading raises the limits. Manage or cancel via the subscription portal.</Tip>
+        <Tip title="Billing">See your plan, how much you've used this month, and manage your subscription. Upgrade to get higher limits, or change or cancel your plan here.</Tip>
       </h1>
       {err && <p style={{ color: "crimson" }}>{err}</p>}
       {confirming && (

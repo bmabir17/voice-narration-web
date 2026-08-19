@@ -31,7 +31,7 @@ export default function MyVoices() {
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "2rem 1.25rem" }}>
       <h1>My voices
-        <Tip title="My voices">Custom voices you've cloned from a sample. You can use these for narration jobs and videos. Cloning is a paid feature — check your plan before uploading.</Tip>
+        <Tip title="My voices">These are custom voices you've created from a sample. You can use them in narrations and videos. Making a custom voice is a paid feature.</Tip>
       </h1>
       <p><Link to="/app/voices/new">+ Add a voice</Link></p>
       {err && <p style={{ color: "crimson" }}>{err}</p>}

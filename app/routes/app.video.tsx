@@ -176,7 +176,7 @@ export default function VideoNew() {
     <main style={{ maxWidth: 820, margin: "0 auto", padding: "2rem 1.25rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
         <h1 style={{ display: "flex", alignItems: "center", gap: 10, margin: 0 }}>New video <DisclosureBadge />
-          <Tip title="What is this page?">Paste a story manuscript, pick a visual style + narration voice, and the agent plans the shots. You review the plan, then it renders the video on our GPU.</Tip>
+          <Tip title="What is this page?">Paste your story, pick a look and a voice, and we'll turn it into a narrated video. You get to review the plan before the video is made.</Tip>
         </h1>
         <button onClick={() => setTourOpen(true)} style={{ border: "1px solid #d1d5db", background: "#fff", borderRadius: 7, padding: "0.35rem 0.8rem", cursor: "pointer", fontSize: ".82rem", color: "#374151" }}>Replay tutorial</button>
       </div>
@@ -241,7 +241,7 @@ export default function VideoNew() {
       <form onSubmit={submit} style={{ display: "grid", gap: 0 }}>
         <div id="v-manuscript">
           <label style={label} htmlFor="manuscript">Manuscript
-            <Tip title="Manuscript">The full story you want turned into video. The agent breaks it into shots and writes narration. Use '# Chapter N' headings to split it into chapters.</Tip>
+            <Tip title="Manuscript">Paste the story you want turned into a video. It will be broken into scenes with spoken narration. Use '# Chapter N' headings to keep sections together.</Tip>
           </label>
           <textarea id="manuscript" value={manuscript} onChange={(e) => setManuscript(e.target.value)}
             rows={5} required placeholder="A lighthouse keeper watches the first storm of autumn roll in over black water…"
@@ -251,7 +251,7 @@ export default function VideoNew() {
         {/* Style brief with presets */}
         <div id="v-style" style={{ marginTop: "1rem" }}>
           <label style={label}>Style brief <span style={{ fontWeight: 400, color: "#888" }}>— pick a preset or type your own</span>
-            <Tip title="Style brief">Describes how the video should look and feel — art direction for the whole video. Examples: 'Ghibli-inspired', 'film noir', 'warm watercolor storybook'.</Tip>
+            <Tip title="Style brief">Tell us how the video should look — for example 'Ghibli-inspired' or 'film noir'. You can pick a ready-made style or describe your own.</Tip>
           </label>
           <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
             <select value={BUILTIN_STYLES.includes(style) || saved.includes(style) ? style : ""}
@@ -276,7 +276,7 @@ export default function VideoNew() {
         <div id="v-voice" style={row}>
           <div style={cell}>
             <label style={label}>Aspect
-              <Tip title="Aspect ratio">Shape of the video: 16:9 widescreen for YouTube, 9:16 portrait for Shorts/Reels/TikTok, 1:1 for feed posts.</Tip>
+              <Tip title="Aspect ratio">The shape of your video: 16:9 is widescreen for YouTube, 9:16 is tall for Shorts/Reels, 1:1 is a square for feed posts.</Tip>
             </label>
             <select value={aspect} onChange={(e) => setAspect(e.target.value)} style={field}>
               <option>16:9</option><option>9:16</option><option>1:1</option>
@@ -284,7 +284,7 @@ export default function VideoNew() {
           </div>
           <div style={cell}>
             <label style={label}>Narration language
-              <Tip title="Narration language">The language the voiceover narration is spoken in. Defaults to English; Hindi and Bangla are supported.</Tip>
+              <Tip title="Narration language">The language the spoken narration will be in. English, Hindi and Bangla are supported.</Tip>
             </label>
             <select value={language} onChange={(e) => setLanguage(e.target.value)} style={field}>
               <option value="en">English</option><option value="hi">हिन्दी · Hindi</option><option value="bn">বাংলা · Bangla</option>
@@ -292,7 +292,7 @@ export default function VideoNew() {
           </div>
           <div style={{ ...cell, minWidth: 200 }}>
             <label style={label}>Narration voice
-              <Tip title="Narration voice">A saved cloned voice for the narration, or upload a one-off voice sample that's cloned for this video only. You need the right to use any voice.</Tip>
+              <Tip title="Narration voice">Pick a voice you've already saved, or upload your own voice sample to use just for this video. Only use voices you have the right to use.</Tip>
             </label>
             <select value={voiceId} onChange={(e) => setVoiceId(e.target.value)} disabled={!!voiceFile} style={field}>
               <option value="">Default voice</option>
@@ -315,7 +315,7 @@ export default function VideoNew() {
         {/* Cast faces */}
         <div id="v-cast" style={{ marginTop: "1rem", border: "1px solid #e5e5e5", borderRadius: 8, padding: "0.9rem" }}>
           <label style={label}>Cast a person's face <span style={{ fontWeight: 400, color: "#888" }}>— optional; a clear frontal photo appears in the shots</span>
-            <Tip title="Cast a face">Reuse a face across your videos so the same character appears in every shot. Requires a clear frontal photo and your right to use that person's likeness.</Tip>
+            <Tip title="Cast a face">Want the same person to appear in the video? Add their face here and it will show up in the scenes. Use a clear photo, and only of people you have the right to feature.</Tip>
           </label>
 
           {/* Saved cast library (character_ids) — no per-job consent (captured when saved). */}
@@ -357,13 +357,13 @@ export default function VideoNew() {
         {/* Toggles */}
         <div id="v-toggles" style={{ display: "flex", gap: "1.3rem", flexWrap: "wrap", marginTop: "1.1rem" }}>
           <label style={chk}><input type="checkbox" checked={music} onChange={(e) => setMusic(e.target.checked)} /> music bed
-            <Tip title="Music bed">Adds a subtle background score underneath the narration to set the mood.</Tip>
+            <Tip title="Music bed">Adds a soft background tune under the narration to set the mood.</Tip>
           </label>
           <label style={chk}><input type="checkbox" checked={keyframes} onChange={(e) => setKeyframes(e.target.checked)} /> keyframes (image→video)
-            <Tip title="Keyframes">Animate a starting image into motion. Forces the deterministic driver (image-to-video mode).</Tip>
+            <Tip title="Keyframes">Starts from a still image and animates it into motion. Turn this on for more of a slideshow-to-video feel.</Tip>
           </label>
           <label style={chk}><input type="checkbox" checked={continuity} onChange={(e) => setContinuity(e.target.checked)} /> continuity chaining
-            <Tip title="Continuity">Keeps characters, colors and scenes consistent across shots so the video feels like one continuous piece.</Tip>
+            <Tip title="Continuity">Keeps people, colors and settings the same across scenes, so the video feels like one continuous story instead of random clips.</Tip>
           </label>
         </div>
 
@@ -374,7 +374,7 @@ export default function VideoNew() {
           <label style={radio}><input type="radio" name="review" checked={review === "auto"} onChange={() => setReview("auto")} />
             <span><b>Skip review — auto-accept</b><br /><small style={{ color: "#777" }}>render everything the planner generates</small></span></label>
           <span style={{ fontSize: ".8rem", color: "#888" }}>
-            <Tip title="Plan review">The agent drafts a shot-by-shot plan (visual prompts + narration). Manual review lets you tweak or regenerate it; auto skips straight to rendering.</Tip>
+            <Tip title="Plan review">We'll draft a plan showing each scene before making it. With manual review you can tweak it or try again; with auto it goes straight to making the video.</Tip>
           </span>
         </div>
 
@@ -382,7 +382,7 @@ export default function VideoNew() {
         <div style={{ marginTop: "1rem" }}>
           <button type="button" onClick={() => setShowAdvanced((v) => !v)} style={{ ...ghostBtn, border: "none", padding: 0, color: "#555" }}>
             {showAdvanced ? "▾" : "▸"} Advanced
-            <Tip title="Advanced options">Power-user settings: candidate count (best-of-N), crossfade, shots cap, FPS, the video model, orchestration mode and more. Defaults are sane for most videos.</Tip>
+            <Tip title="Advanced options">Extra settings for fine-tuning your video. The defaults already work well for most videos, so you can usually leave these alone.</Tip>
           </button>
           {showAdvanced && (
             <div style={{ marginTop: "0.6rem" }}>
@@ -423,7 +423,7 @@ export default function VideoNew() {
           <button id="v-submit" disabled={busy} style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 7, padding: "0.7rem 1.4rem", fontWeight: 600, cursor: "pointer", opacity: busy ? 0.6 : 1 }}>
             {busy ? "Submitting…" : "Plan & render"}
           </button>
-          <Tip title="Plan & render">Starts the pipeline: the agent plans shots, you approve, then it renders on the home GPU. You'll be taken to a live progress page.</Tip>
+          <Tip title="Plan & render">Start making your video. We'll plan the scenes first, then create them one by one — you can watch the progress as it goes.</Tip>
           {err && <span style={{ color: "#c5221f", fontSize: ".9rem" }}>{err}</span>}
         </div>
       </form>

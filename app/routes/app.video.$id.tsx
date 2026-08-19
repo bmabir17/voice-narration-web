@@ -392,7 +392,7 @@ export default function VideoRun() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
           <h1 style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 0 }}>
             Render <code style={{ fontSize: ".7em", color: "#888" }}>{id.slice(0, 16)}</code> <DisclosureBadge />
-            <Tip title="Render page">Watch your video being planned and rendered live. Approve the shot plan when asked, then see each shot and the final video. Videos auto-delete ~30 days after completion.</Tip>
+            <Tip title="Render page">This page shows your video being made, step by step. Approve the plan when asked, watch each scene appear, then download the finished video. Videos are kept for about a month.</Tip>
           </h1>
           <button onClick={() => setTourOpen(true)} style={{ border: "1px solid #d1d5db", background: "#fff", borderRadius: 7, padding: "0.35rem 0.8rem", cursor: "pointer", fontSize: ".82rem", color: "#374151" }}>Replay tutorial</button>
         </div>

@@ -38,7 +38,7 @@ export default function Narrate() {
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "2rem 1.25rem" }}>
       <h1>New narration
-        <Tip title="New narration">Turns your manuscript into an audiobook-style narrated audio. Use '# Chapter N' headings to split it into chapters; each chapter becomes a separate file.</Tip>
+        <Tip title="New narration">Paste your story and we'll turn it into a narrated audio, like an audiobook. Use '# Chapter N' headings to split it into separate chapters.</Tip>
       </h1>
       <form onSubmit={submit} style={{ display: "grid", gap: "0.9rem" }}>
         <label>Voice

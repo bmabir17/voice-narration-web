@@ -106,7 +106,7 @@ export default function NewVoice() {
     return (
       <main style={{ maxWidth: 640, margin: "0 auto", padding: "2rem 1.25rem" }}>
 <h1>Add your voice
-        <Tip title="Add your voice">Upload or record a 5–10 second sample of a voice, and we clone it for narration. Best results come from clean, single-speaker speech with no background noise.</Tip>
+        <Tip title="Add your voice">Upload or record a short 5–10 second sample of a voice, and we'll create a custom version of it for your narrations. A clean, quiet recording works best.</Tip>
       </h1>
         <p>Voice cloning is available on the <strong>Creator</strong> plan and above. Your current plan
           {tier ? ` (${tier})` : ""} doesn't include custom voices.</p>
@@ -142,7 +142,7 @@ export default function NewVoice() {
         <div style={{ display: "grid", gap: "0.6rem" }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <span style={{ fontWeight: 600, fontSize: ".9rem" }}>Source</span>
-            <Tip title="Voice sample">A clean 5–10 second clip, single speaker, no music or background noise — that's all we need to clone the voice.</Tip>
+            <Tip title="Voice sample">A short, clean recording of just one person speaking, with no music or background noise — that's all we need to recreate the voice.</Tip>
           </div>
           <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", width: "fit-content" }}>
             <button type="button" onClick={() => { setMode("upload"); clearRecording(); }} style={tabStyle(mode === "upload")}>

@@ -153,7 +153,7 @@ export default function Dashboard() {
         <div id="dash-usage" style={{ border: "1px solid #e5e5e5", borderRadius: 10, padding: "1rem 1.2rem", marginBottom: "1.5rem", background: "#fafafa" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <span style={{ fontSize: ".9rem", fontWeight: 600, color: "#333" }}>Usage · {usage.period}
-              <Tip title="Monthly usage">Monthly limits reset at the start of each period. Bars show what you've used of your plan's allowance.</Tip>
+              <Tip title="Monthly usage">These bars show how much of your plan you've used this month. When a bar fills up, you've hit your limit for now.</Tip>
             </span>
             <span style={{ fontSize: ".8rem", color: "#777" }}>
               {usage.tier} tier{usage.current_period_end ? ` · renews ${new Date(usage.current_period_end).toLocaleDateString()}` : ""}
@@ -178,7 +178,7 @@ export default function Dashboard() {
       {/* Video jobs */}
       <div id="dash-videos" style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "0 0 .4rem" }}>
         <h2 style={{ margin: 0 }}>Video jobs
-          <Tip title="Video jobs">A manuscript turned into a narrated video. Status updates live: queued → planning → rendering → done. Videos auto-delete ~30 days after completion, so download in time.</Tip>
+          <Tip title="Video jobs">These are the videos you've made from your stories. The status updates on its own as the video is being made. Videos are kept for about a month, so be sure to download yours before then.</Tip>
         </h2>
         <Link to="/app/video" id="dash-new-video" style={{
           background: "#1858c7", color: "#fff", padding: "0.45rem 1rem", borderRadius: 8,
@@ -210,7 +210,7 @@ export default function Dashboard() {
 
       {/* Voice jobs */}
       <h2 id="dash-voices" style={{ margin: "1.5rem 0 .4rem" }}>Voice jobs
-        <Tip title="Voice jobs">Narrated-audio jobs from your manuscript. Click a completed job to play or download its chapters. Jobs are cleaned up after a while, so grab your files.</Tip>
+        <Tip title="Voice jobs">These are the audio narrations you've made from your stories. Click a finished one to listen to it or download the files. Audio is kept for a while, so grab yours before it's cleaned up.</Tip>
       </h2>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead><tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>

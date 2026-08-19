@@ -11,7 +11,7 @@ const WRAP: React.CSSProperties = {
 };
 
 const TOOLTIP: React.CSSProperties = {
-  position: "absolute", zIndex: 90, maxWidth: 300, background: "#1f2937", color: "#f3f4f6",
+  position: "absolute", zIndex: 90, maxWidth: 600, background: "#1f2937", color: "#f3f4f6",
   fontSize: ".8rem", lineHeight: 1.45, padding: "0.5rem 0.7rem", borderRadius: 7,
   boxShadow: "0 6px 20px rgba(0,0,0,.25)", pointerEvents: "auto",
   top: "50%", left: "calc(100% + 8px)", transform: "translateY(-50%)",
