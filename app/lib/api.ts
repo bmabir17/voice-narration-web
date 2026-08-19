@@ -121,6 +121,11 @@ export interface VideoJobRow {
   id: string; status: string; stage: string | null;
   progress: { shots_done: number; shots_total: number };
   style_brief: string | null; created_at: string; expires_at: string | null;
+  plan: { brief: { logline?: string | null } | null } | null;
+}
+// Human-readable topic of a video job: the planner's logline once available, else the style brief.
+export function jobLogline(j: Pick<VideoJobRow, "plan" | "style_brief">): string | null {
+  return j.plan?.brief?.logline ?? j.style_brief ?? null;
 }
 export interface FaceRow {
   id: string; name: string; image_ref: string; consent: boolean; created_at: string;

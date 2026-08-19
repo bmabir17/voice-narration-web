@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router";
-import { api, type VideoJobDetail, type VideoJobRow } from "~/lib/api";
+import { api, type VideoJobDetail, type VideoJobRow, jobLogline } from "~/lib/api";
 import { supabase } from "~/lib/supabase";
 import { DisclosureBadge } from "~/components/DisclosureBadge";
 import { Tip } from "~/components/Tooltip";
@@ -154,7 +154,8 @@ export default function VideoRun() {
           if (p.eventType === "DELETE") { const oid = p.old?.id; if (oid) setJobs((v) => v.filter((j) => j.id !== oid)); return; }
           const r = p.new;
           const row: VideoJobRow = { id: r.id, status: r.status, stage: r.stage ?? null, progress: r.progress,
-            style_brief: r.style_brief ?? null, created_at: r.created_at, expires_at: r.expires_at ?? null };
+            style_brief: r.style_brief ?? null, created_at: r.created_at, expires_at: r.expires_at ?? null,
+            plan: r.plan ?? null };
           setJobs((v) => v.some((j) => j.id === row.id) ? v.map((j) => (j.id === row.id ? { ...j, ...row } : j)) : [row, ...v]);
         })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "video_job_events", filter: `job_id=eq.${id}` },
@@ -357,8 +358,10 @@ export default function VideoRun() {
                 border: `1px solid ${current ? ACCENT : "#e5e5e5"}`, borderRadius: 8, padding: "0.5rem 0.6rem",
                 background: current ? "#eef4fe" : "#fff",
               }}>
-                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: ".72rem", color: "#666" }}>{j.id.slice(0, 16)}</div>
-                <div style={{ fontSize: ".8rem", color: "#444", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{j.style_brief ?? "—"}</div>
+                <div title={j.id} style={{ fontSize: ".8rem", color: "#222", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {jobLogline(j) ?? <em style={{ color: "#999", fontWeight: 400 }}>…</em>}
+                  </div>
+                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: ".72rem", color: "#666", marginTop: 2 }}>{j.id.slice(0, 16)}</div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
                   <span style={{ color: STATUS_COLOR[j.status] ?? "#666", fontWeight: 600, fontSize: ".72rem", display: "inline-flex", alignItems: "center", gap: 4 }}>
                     {active && <span className="va-spinner" style={{ width: 9, height: 9, borderWidth: 2 }} />}{j.status}

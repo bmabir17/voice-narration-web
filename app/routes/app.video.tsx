@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router";
-import { api, uploadFaceImage, uploadVideoVoice, type SubmitVideoInput, type VideoJobRow, type FaceRow, type UsageResponse } from "~/lib/api";
+import { api, uploadFaceImage, uploadVideoVoice, type SubmitVideoInput, type VideoJobRow, type FaceRow, type UsageResponse, jobLogline } from "~/lib/api";
 import { supabase } from "~/lib/supabase";
 import { DisclosureBadge } from "~/components/DisclosureBadge";
 import { Tip } from "~/components/Tooltip";
@@ -106,7 +106,8 @@ export default function VideoNew() {
         if (p.eventType === "DELETE") { const oid = p.old?.id; if (oid) setJobs((v) => v.filter((j) => j.id !== oid)); return; }
         const r = p.new;
         const row: VideoJobRow = { id: r.id, status: r.status, stage: r.stage ?? null, progress: r.progress,
-          style_brief: r.style_brief ?? null, created_at: r.created_at, expires_at: r.expires_at ?? null };
+          style_brief: r.style_brief ?? null, created_at: r.created_at, expires_at: r.expires_at ?? null,
+          plan: r.plan ?? null };
         setJobs((v) => v.some((j) => j.id === row.id) ? v.map((j) => (j.id === row.id ? { ...j, ...row } : j)) : [row, ...v]);
       })
       .subscribe();
@@ -433,13 +434,18 @@ export default function VideoNew() {
       {jobs.length === 0 ? <p style={{ color: "#666" }}>No videos yet.</p> : (
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: ".92rem" }}>
           <thead><tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
-            <th style={{ padding: "6px 4px" }}>Job</th><th>Style</th><th>Status</th><th>Shots</th><th>Expires</th><th></th></tr></thead>
+            <th style={{ padding: "6px 4px" }}>Topic</th><th>Style</th><th>Status</th><th>Shots</th><th>Expires</th><th></th></tr></thead>
           <tbody>
             {jobs.map((j) => {
               const ex = expiryShort(j.expires_at);
               return (
               <tr key={j.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
-                <td style={{ padding: "6px 4px" }}><code>{j.id.slice(0, 14)}</code></td>
+                <td style={{ padding: "6px 4px" }}>
+                  <div title={j.id} style={{ fontWeight: 500, color: "#222" }}>
+                    {jobLogline(j) ?? <em style={{ color: "#999" }}>…</em>}
+                  </div>
+                  <code style={{ fontSize: 11, color: "#999" }}>{j.id.slice(0, 14)}</code>
+                </td>
                 <td style={{ color: "#666" }}>{j.style_brief ?? "—"}</td>
                 <td><span style={{ color: STATUS_COLOR[j.status] ?? "#666", fontWeight: 600 }}>{j.status}</span></td>
                 <td>{j.progress?.shots_done ?? 0}/{j.progress?.shots_total ?? 0}</td>

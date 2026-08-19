@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from "react";
 import { Link } from "react-router";
-import { api, type VideoJobRow, type UsageResponse } from "~/lib/api";
+import { api, type VideoJobRow, type UsageResponse, jobLogline } from "~/lib/api";
 import { supabase } from "~/lib/supabase";
 import { DisclosureBadge } from "~/components/DisclosureBadge";
 import { Tip } from "~/components/Tooltip";
@@ -83,7 +83,8 @@ export default function Dashboard() {
         if (p.eventType === "DELETE") { const oid = p.old?.id; if (oid) setVideos((v) => v.filter((j) => j.id !== oid)); return; }
         const r = p.new;
         const row: VideoJobRow = { id: r.id, status: r.status, stage: r.stage ?? null, progress: r.progress,
-          style_brief: r.style_brief ?? null, created_at: r.created_at, expires_at: r.expires_at ?? null };
+          style_brief: r.style_brief ?? null, created_at: r.created_at, expires_at: r.expires_at ?? null,
+          plan: r.plan ?? null };
         setVideos((v) => v.some((j) => j.id === row.id) ? v.map((j) => (j.id === row.id ? { ...j, ...row } : j)) : [row, ...v]);
       })
       .subscribe();
@@ -187,13 +188,18 @@ export default function Dashboard() {
       </div>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead><tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
-          <th>Job</th><th>Style</th><th>Status</th><th>Shots</th><th>Expires</th><th></th></tr></thead>
+          <th>Topic</th><th>Style</th><th>Status</th><th>Shots</th><th>Expires</th><th></th></tr></thead>
         <tbody>
           {videos.map((j) => {
             const ex = expiryShort(j.expires_at);
             return (
               <tr key={j.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
-                <td><code>{j.id.slice(0, 14)}</code></td>
+                <td>
+                  <div title={j.id} style={{ fontWeight: 500, color: "#222" }}>
+                    {jobLogline(j) ?? <em style={{ color: "#999" }}>…</em>}
+                  </div>
+                  <code style={{ fontSize: 11, color: "#999" }}>{j.id.slice(0, 14)}</code>
+                </td>
                 <td style={{ color: "#666" }}>{j.style_brief ?? "—"}</td>
                 <td><span style={{ color: VIDEO_STATUS_COLOR[j.status] ?? "#666", fontWeight: 500 }}>{j.status}</span></td>
                 <td>{j.progress?.shots_done ?? 0}/{j.progress?.shots_total ?? 0}</td>
