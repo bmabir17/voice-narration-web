@@ -1,5 +1,6 @@
 // Inline question-mark tooltip for "learn more" hints. Works on hover and click (touch).
-// Place one next to a label or heading to explain a control without permanent text.
+// Usage: <Tip title="Short aria-label">Hidden explanation shown on hover</Tip>
+// Renders ONLY a "?" badge; the children are the tooltip text, never visible inline.
 import { useEffect, useRef, useState } from "react";
 
 const WRAP: React.CSSProperties = {
@@ -9,12 +10,17 @@ const WRAP: React.CSSProperties = {
   flexShrink: 0, userSelect: "none", background: "#fff",
 };
 
-export function Tip({ text, children, title }: {
-  text?: React.ReactNode; children?: React.ReactNode; title?: string;
+const TOOLTIP: React.CSSProperties = {
+  position: "absolute", zIndex: 90, maxWidth: 300, background: "#1f2937", color: "#f3f4f6",
+  fontSize: ".8rem", lineHeight: 1.45, padding: "0.5rem 0.7rem", borderRadius: 7,
+  boxShadow: "0 6px 20px rgba(0,0,0,.25)", pointerEvents: "auto",
+  top: "50%", left: "calc(100% + 8px)", transform: "translateY(-50%)",
+};
+
+export function Tip({ children, title }: {
+  children: React.ReactNode; title?: string;
 }) {
-  const content = text ?? title ?? "Help";
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLSpanElement>(null);
   const closeRef = useRef<number | null>(null);
 
   useEffect(() => () => { if (closeRef.current) window.clearTimeout(closeRef.current); }, []);
@@ -23,8 +29,7 @@ export function Tip({ text, children, title }: {
   const keep = () => { if (closeRef.current) window.clearTimeout(closeRef.current); };
 
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, verticalAlign: "middle", position: "relative" }} ref={ref}>
-      {children}
+    <span style={{ position: "relative", display: "inline-flex", alignItems: "center", flexShrink: 0 }}>
       <span
         role="button" tabIndex={0} aria-label={typeof title === "string" ? title : "Help"}
         aria-expanded={open}
@@ -39,14 +44,10 @@ export function Tip({ text, children, title }: {
           role="tooltip"
           onMouseEnter={keep}
           onMouseLeave={closeSoon}
-          style={{
-            position: "absolute", zIndex: 90, maxWidth: 300, background: "#1f2937", color: "#f3f4f6",
-            fontSize: ".8rem", lineHeight: 1.45, padding: "0.5rem 0.7rem", borderRadius: 7,
-            boxShadow: "0 6px 20px rgba(0,0,0,.25)", pointerEvents: "auto", transform: "translateY(-50%)",
-          }}
+          style={TOOLTIP}
         >
           <span style={{ position: "absolute", width: 6, height: 6, background: "#1f2937", transform: "rotate(45deg)", left: -3, top: "50%", marginTop: -3 }} />
-          {content}
+          {children}
         </span>
       )}
     </span>
