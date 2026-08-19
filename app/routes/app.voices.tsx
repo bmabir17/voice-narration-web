@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { api } from "~/lib/api";
+import { Tip } from "~/components/Tooltip";
 
 interface Voice {
   voice_id: string; language: string; accent: string | null; model: string; source: string;
@@ -29,7 +30,9 @@ export default function MyVoices() {
 
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "2rem 1.25rem" }}>
-      <h1>My voices</h1>
+      <h1>My voices
+        <Tip title="My voices">Custom voices you've cloned from a sample. You can use these for narration jobs and videos. Cloning is a paid feature — check your plan before uploading.</Tip>
+      </h1>
       <p><Link to="/app/voices/new">+ Add a voice</Link></p>
       {err && <p style={{ color: "crimson" }}>{err}</p>}
       {voices === null ? (

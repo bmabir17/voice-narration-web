@@ -3,6 +3,9 @@ import { useParams, Link, useNavigate } from "react-router";
 import { api, type VideoJobDetail, type VideoJobRow } from "~/lib/api";
 import { supabase } from "~/lib/supabase";
 import { DisclosureBadge } from "~/components/DisclosureBadge";
+import { Tip } from "~/components/Tooltip";
+import { GuidedTour } from "~/components/GuidedTour";
+import { currentUserId, hasOnboarded, markOnboarded } from "~/lib/onboarding";
 
 const ACCENT = "#1a73e8";
 const STAGES = ["Plan", "Review", "Render", "Assemble", "QA", "Done"];
@@ -75,6 +78,14 @@ export default function VideoRun() {
   const [currentModel, setCurrentModel] = useState("");
   const [, setTick] = useState(0); // forces a re-render so the countdown + relative times stay live
   const seen = useRef<Set<number>>(new Set());
+  // First-login guided tour
+  const [tourOpen, setTourOpen] = useState(false);
+
+  useEffect(() => {
+    currentUserId().then((uid) => {
+      if (uid && !hasOnboarded(uid)) setTourOpen(true);
+    }).catch(() => {});
+  }, []);
 
   async function refetch() {
     try { setJob(await api.getVideoJob(id)); } catch (e: any) { setErr(e.message); }
@@ -378,14 +389,54 @@ export default function VideoRun() {
 
       {/* Right column — the run detail */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <h1 style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 0 }}>
-          Render <code style={{ fontSize: ".7em", color: "#888" }}>{id.slice(0, 16)}</code> <DisclosureBadge />
-        </h1>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
+          <h1 style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 0 }}>
+            Render <code style={{ fontSize: ".7em", color: "#888" }}>{id.slice(0, 16)}</code> <DisclosureBadge />
+            <Tip title="Render page">Watch your video being planned and rendered live. Approve the shot plan when asked, then see each shot and the final video. Videos auto-delete ~30 days after completion.</Tip>
+          </h1>
+          <button onClick={() => setTourOpen(true)} style={{ border: "1px solid #d1d5db", background: "#fff", borderRadius: 7, padding: "0.35rem 0.8rem", cursor: "pointer", fontSize: ".82rem", color: "#374151" }}>Replay tutorial</button>
+        </div>
+
+        <GuidedTour
+          open={tourOpen}
+          onClose={() => setTourOpen(false)}
+          onFinish={() => { currentUserId().then((uid) => { if (uid) markOnboarded(uid); }).catch(() => {}); }}
+          steps={[
+            {
+              title: "Your render, live",
+              body: <>This page shows your video being built in real time: the stage rail at the top (Plan → Review → Render → Assemble → QA → Done), the shots as they're created, and an activity log.</>,
+            },
+            {
+              title: "Stage rail & status",
+              body: <>Colored pills show where the job is in the pipeline. The <b>Plan</b> pill opens the full generated plan when ready; the status line shows progress (e.g. <i>shot 3/8</i>) and an estimated time left.</>,
+              target: "v-stage",
+            },
+            {
+              title: "Review the plan (if enabled)",
+              body: <>When you chose manual review, the job pauses at <b>awaiting_plan</b> and you can edit each shot's prompt and narration, then <b>Approve & render</b>, <b>Regenerate</b> the plan, or <b>Reject</b> it.</>,
+              target: "v-review",
+            },
+            {
+              title: "Shots & candidates",
+              body: <>Each finished shot streams in as a card with its verdict (pass/revise). Hit <b>◇ Review candidates</b> to compare every take, regenerate more, pick the best, and re-assemble the final video.</>,
+              target: "v-shots",
+            },
+            {
+              title: "Expiry warning",
+              body: <>Videos are <b>auto-deleted ~30 days after creation</b> to save storage. Watch for the red <b>expires</b> note and download your finished video before then.</>,
+              target: "v-expiry",
+            },
+            {
+              title: "Done",
+              body: <>That's everything you need. Hover any <b>?</b> icon on this page for a reminder, or replay this tour with the button up top.</>,
+            },
+          ]}
+        />
 
         {!job ? <p style={{ color: "#666" }}>{err ?? "Loading…"}</p> : (
           <>
             {/* Stage rail + status */}
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "1rem 0", alignItems: "center" }}>
+            <div id="v-stage" style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "1rem 0", alignItems: "center" }}>
               {STAGES.map((s, i) => {
                 const done = i < activeIdx || job.status === "completed";
                 const active = i === activeIdx && !TERMINAL.has(job.status);
@@ -421,7 +472,7 @@ export default function VideoRun() {
               const ex = expiryNote(job.expires_at);
               if (!ex) return null;
               return (
-                <p style={{ fontSize: ".8rem", margin: "-.4rem 0 1rem", color: ex.soon ? "#c5221f" : "#888" }}>
+                <p id="v-expiry" style={{ fontSize: ".8rem", margin: "-.4rem 0 1rem", color: ex.soon ? "#c5221f" : "#888" }}>
                   {ex.soon ? "⚠ " : ""}
                   {ex.expired ? `Assets expired ${ex.date} and are being removed.`
                     : `Assets expire on ${ex.date} (${ex.days} day${ex.days === 1 ? "" : "s"} left).`}
@@ -435,7 +486,7 @@ export default function VideoRun() {
 
             {/* HITL plan review */}
             {job.status === "awaiting_plan" && job.plan && (
-              <section style={{ border: `1px solid ${ACCENT}`, borderRadius: 10, padding: "1rem", margin: "1rem 0" }}>
+              <section id="v-review" style={{ border: `1px solid ${ACCENT}`, borderRadius: 10, padding: "1rem", margin: "1rem 0" }}>
                 <h2 style={{ marginTop: 0 }}>Review the plan</h2>
                 {job.plan.brief?.logline && <p style={{ color: "#444" }}><b>Logline:</b> {job.plan.brief.logline}</p>}
                 <div style={{ display: "grid", gap: "0.8rem" }}>
@@ -485,7 +536,7 @@ export default function VideoRun() {
 
             {/* Per-shot result cards — stream in as each shot finishes */}
             {shotCards.length > 0 && (
-              <section style={{ margin: "1.2rem 0" }}>
+              <section id="v-shots" style={{ margin: "1.2rem 0" }}>
                 <h3 style={{ margin: "0 0 .6rem", display: "flex", alignItems: "center", gap: 12 }}>
                   Shots{job.progress?.shots_total ? ` (${shotCards.length}/${job.progress.shots_total})` : ""}
                   {job.render_state && job.render_state.shots.length > 0 && (

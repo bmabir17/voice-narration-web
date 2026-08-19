@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { api } from "~/lib/api";
+import { Tip } from "~/components/Tooltip";
 
 interface Voice { voice_id: string; language: string; accent: string | null; model: string; source: string; }
 
@@ -36,7 +37,9 @@ export default function Narrate() {
 
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "2rem 1.25rem" }}>
-      <h1>New narration</h1>
+      <h1>New narration
+        <Tip title="New narration">Turns your manuscript into an audiobook-style narrated audio. Use '# Chapter N' headings to split it into chapters; each chapter becomes a separate file.</Tip>
+      </h1>
       <form onSubmit={submit} style={{ display: "grid", gap: "0.9rem" }}>
         <label>Voice
           <select value={voiceId} onChange={(e) => {

@@ -4,6 +4,7 @@ import { api, uploadReferenceAudio } from "~/lib/api";
 import { supabase } from "~/lib/supabase";
 import { ConsentGate, CONSENT_STATEMENT_VERSION } from "~/components/ConsentGate";
 import { RetentionNotice } from "~/components/DisclosureBadge";
+import { Tip } from "~/components/Tooltip";
 
 const MAX_RECORD_SECONDS = 30;
 
@@ -104,7 +105,9 @@ export default function NewVoice() {
   if (canClone === false) {
     return (
       <main style={{ maxWidth: 640, margin: "0 auto", padding: "2rem 1.25rem" }}>
-        <h1>Add your voice</h1>
+<h1>Add your voice
+        <Tip title="Add your voice">Upload or record a 5–10 second sample of a voice, and we clone it for narration. Best results come from clean, single-speaker speech with no background noise.</Tip>
+      </h1>
         <p>Voice cloning is available on the <strong>Creator</strong> plan and above. Your current plan
           {tier ? ` (${tier})` : ""} doesn't include custom voices.</p>
         <Link to="/pricing" style={{ display: "inline-block", padding: "0.7rem 1.3rem",
@@ -137,6 +140,10 @@ export default function NewVoice() {
 
         {/* Source: upload a file OR record from the mic */}
         <div style={{ display: "grid", gap: "0.6rem" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <span style={{ fontWeight: 600, fontSize: ".9rem" }}>Source</span>
+            <Tip title="Voice sample">A clean 5–10 second clip, single speaker, no music or background noise — that's all we need to clone the voice.</Tip>
+          </div>
           <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", width: "fit-content" }}>
             <button type="button" onClick={() => { setMode("upload"); clearRecording(); }} style={tabStyle(mode === "upload")}>
               Upload file

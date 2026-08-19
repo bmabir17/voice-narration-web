@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { api, type UsageResponse } from "~/lib/api";
+import { Tip } from "~/components/Tooltip";
 
 const TIER_LABEL: Record<string, string> = {
   free: "Free", creator: "Creator", pro: "Pro", volume: "Volume / API",
@@ -77,7 +78,9 @@ export default function Billing() {
 
   return (
     <main style={{ maxWidth: 640, margin: "0 auto", padding: "2rem 1.25rem" }}>
-      <h1>Billing</h1>
+      <h1>Billing
+        <Tip title="Billing">Your plan, monthly usage and subscription. Usage bars show how much of your plan you've used this period; upgrading raises the limits. Manage or cancel via the subscription portal.</Tip>
+      </h1>
       {err && <p style={{ color: "crimson" }}>{err}</p>}
       {confirming && (
         <p style={{ background: "#eef4ff", border: "1px solid #cfe0ff", color: "#1858c7",

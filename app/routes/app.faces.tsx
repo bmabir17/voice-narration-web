@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, uploadCharacterFace, FACE_CONSENT_VERSION, type FaceRow } from "~/lib/api";
 import { supabase } from "~/lib/supabase";
+import { Tip } from "~/components/Tooltip";
 
 const ACCENT = "#1a73e8";
 
@@ -61,7 +62,9 @@ export default function MyFaces() {
 
   return (
     <main style={{ maxWidth: 760, margin: "0 auto", padding: "2rem 1.25rem" }}>
-      <h1>My cast</h1>
+      <h1>My cast
+        <Tip title="My cast">Save a person's face once and reuse it across videos. The planner casts them into shots and a face-swap places them in the frame. You must confirm you have the right to use each likeness.</Tip>
+      </h1>
       <p style={{ color: "#666", marginTop: 0 }}>Save people's faces once and reuse them across videos — the planner casts them into shots and a face-swap places them in the frame.</p>
       {err && <p style={{ color: "#c5221f" }}>{err}</p>}
 

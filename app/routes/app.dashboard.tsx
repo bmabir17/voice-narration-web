@@ -3,6 +3,9 @@ import { Link } from "react-router";
 import { api, type VideoJobRow, type UsageResponse } from "~/lib/api";
 import { supabase } from "~/lib/supabase";
 import { DisclosureBadge } from "~/components/DisclosureBadge";
+import { Tip } from "~/components/Tooltip";
+import { GuidedTour, type TourStep } from "~/components/GuidedTour";
+import { currentUserId, hasOnboarded, markOnboarded } from "~/lib/onboarding";
 
 interface JobRow { id: string; status: string; voice_id: string; language: string;
   progress: { chapters_done: number; chapters_total: number }; created_at: string; }
@@ -55,6 +58,15 @@ export default function Dashboard() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [outputs, setOutputs] = useState<Record<string, { format: string; items: Output[] }>>({});
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  // First-login guided tour
+  const [tourOpen, setTourOpen] = useState(false);
+
+  useEffect(() => {
+    // A brand-new user (first session on this browser) gets the guided tour once.
+    currentUserId().then((uid) => {
+      if (uid && !hasOnboarded(uid)) setTourOpen(true);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     api.listJobs().then((r: any) => setJobs(r.jobs)).catch(() => {});
@@ -95,13 +107,54 @@ export default function Dashboard() {
 
   return (
     <main style={{ maxWidth: 900, margin: "0 auto", padding: "2rem 1.25rem" }}>
-      <h1>Dashboard <DisclosureBadge /></h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <h1>Dashboard <DisclosureBadge /></h1>
+        <button onClick={() => setTourOpen(true)} style={{ border: "1px solid #d1d5db", background: "#fff", borderRadius: 7, padding: "0.35rem 0.8rem", cursor: "pointer", fontSize: ".82rem", color: "#374151" }}>Replay tutorial</button>
+      </div>
+
+      <GuidedTour
+        open={tourOpen}
+        onClose={() => { setTourOpen(false); }}
+        onFinish={() => { currentUserId().then((uid) => { if (uid) markOnboarded(uid); }).catch(() => {}); }}
+        steps={[
+          {
+            title: "Welcome to your dashboard",
+            body: <>This is your home base. It shows your <b>usage for the month</b>, plus every <b>video</b> and <b>voice narration</b> job you've started. Let's walk through what each part does.</>,
+          },
+          {
+            title: "Your monthly usage",
+            body: <>The bars at the top track how much of your plan you've used this month — <b>narration minutes</b> and <b>videos rendered</b>. When a bar fills up, upgrade to keep going.</>,
+            target: "dash-usage",
+          },
+          {
+            title: "Start a new video",
+            body: <>Hit <b>+ New video</b> to turn a story manuscript into a narrated, subtitled video. You'll pick a style, voice and shots before it renders on our GPU.</>,
+            target: "dash-new-video",
+          },
+          {
+            title: "Your video jobs",
+            body: <>Every video you've created appears here. Watch the <b>status</b> (queued → planning → rendering → done) and <b>shot count</b> update live. Click <b>open →</b> to see the video detail page.</>,
+            target: "dash-videos",
+          },
+          {
+            title: "Your voice jobs",
+            body: <>Audio narrations show up here. Click a <b>completed</b> job to expand it and play or download each chapter. Jobs expire — download before they're cleaned up.</>,
+            target: "dash-voices",
+          },
+          {
+            title: "You're all set",
+            body: <>You can replay this tour anytime from the <b>Replay tutorial</b> button, or hover any <b>?</b> icon for a quick reminder. Have fun!</>,
+          },
+        ]}
+      />
 
       {/* Usage this period */}
       {usage && (
-        <div style={{ border: "1px solid #e5e5e5", borderRadius: 10, padding: "1rem 1.2rem", marginBottom: "1.5rem", background: "#fafafa" }}>
+        <div id="dash-usage" style={{ border: "1px solid #e5e5e5", borderRadius: 10, padding: "1rem 1.2rem", marginBottom: "1.5rem", background: "#fafafa" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontSize: ".9rem", fontWeight: 600, color: "#333" }}>Usage · {usage.period}</span>
+            <span style={{ fontSize: ".9rem", fontWeight: 600, color: "#333" }}>Usage · {usage.period}
+              <Tip title="Monthly usage">Monthly limits reset at the start of each period. Bars show what you've used of your plan's allowance.</Tip>
+            </span>
             <span style={{ fontSize: ".8rem", color: "#777" }}>
               {usage.tier} tier{usage.current_period_end ? ` · renews ${new Date(usage.current_period_end).toLocaleDateString()}` : ""}
               {usage.cancel_at ? ` · cancels ${new Date(usage.cancel_at).toLocaleDateString()}` : ""}
@@ -123,7 +176,15 @@ export default function Dashboard() {
       )}
 
       {/* Video jobs */}
-      <h2 style={{ margin: "0 0 .4rem" }}>Video jobs</h2>
+      <div id="dash-videos" style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "0 0 .4rem" }}>
+        <h2 style={{ margin: 0 }}>Video jobs
+          <Tip title="Video jobs">A manuscript turned into a narrated video. Status updates live: queued → planning → rendering → done. Videos auto-delete ~30 days after completion, so download in time.</Tip>
+        </h2>
+        <Link to="/app/video" id="dash-new-video" style={{
+          background: "#1858c7", color: "#fff", padding: "0.45rem 1rem", borderRadius: 8,
+          fontSize: ".85rem", fontWeight: 600, textDecoration: "none",
+        }}>+ New video</Link>
+      </div>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead><tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
           <th>Job</th><th>Style</th><th>Status</th><th>Shots</th><th>Expires</th><th></th></tr></thead>
@@ -148,7 +209,9 @@ export default function Dashboard() {
       {videos.length === 0 && <p style={{ color: "#666" }}>No video jobs yet.</p>}
 
       {/* Voice jobs */}
-      <h2 style={{ margin: "1.5rem 0 .4rem" }}>Voice jobs</h2>
+      <h2 id="dash-voices" style={{ margin: "1.5rem 0 .4rem" }}>Voice jobs
+        <Tip title="Voice jobs">Narrated-audio jobs from your manuscript. Click a completed job to play or download its chapters. Jobs are cleaned up after a while, so grab your files.</Tip>
+      </h2>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead><tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
           <th>Job</th><th>Voice</th><th>Status</th><th>Progress</th><th></th></tr></thead>

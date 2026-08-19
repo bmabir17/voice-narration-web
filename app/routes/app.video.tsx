@@ -3,6 +3,9 @@ import { useNavigate, Link } from "react-router";
 import { api, uploadFaceImage, uploadVideoVoice, type SubmitVideoInput, type VideoJobRow, type FaceRow, type UsageResponse } from "~/lib/api";
 import { supabase } from "~/lib/supabase";
 import { DisclosureBadge } from "~/components/DisclosureBadge";
+import { Tip } from "~/components/Tooltip";
+import { GuidedTour } from "~/components/GuidedTour";
+import { currentUserId, hasOnboarded, markOnboarded } from "~/lib/onboarding";
 
 const ACCENT = "#1a73e8";
 const BUILTIN_STYLES = [
@@ -81,6 +84,14 @@ export default function VideoNew() {
   const [err, setErr] = useState<string | null>(null);
   const [jobs, setJobs] = useState<VideoJobRow[]>([]);
   const [usage, setUsage] = useState<UsageResponse | null>(null);
+  const [tourOpen, setTourOpen] = useState(false);
+
+  useEffect(() => {
+    // First-time visitors get the guided tour once per browser.
+    currentUserId().then((uid) => {
+      if (uid && !hasOnboarded(uid)) setTourOpen(true);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     setSaved(loadPresets());
@@ -163,8 +174,60 @@ export default function VideoNew() {
 
   return (
     <main style={{ maxWidth: 820, margin: "0 auto", padding: "2rem 1.25rem" }}>
-      <h1 style={{ display: "flex", alignItems: "center", gap: 10 }}>New video <DisclosureBadge /></h1>
-      <p style={{ color: "#666", marginTop: 0 }}>A story manuscript → a narrated, subtitled video. Renders on the home GPU; you can review the planned shots before it renders.</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
+        <h1 style={{ display: "flex", alignItems: "center", gap: 10, margin: 0 }}>New video <DisclosureBadge />
+          <Tip title="What is this page?">Paste a story manuscript, pick a visual style + narration voice, and the agent plans the shots. You review the plan, then it renders the video on our GPU.</Tip>
+        </h1>
+        <button onClick={() => setTourOpen(true)} style={{ border: "1px solid #d1d5db", background: "#fff", borderRadius: 7, padding: "0.35rem 0.8rem", cursor: "pointer", fontSize: ".82rem", color: "#374151" }}>Replay tutorial</button>
+      </div>
+
+      <GuidedTour
+        open={tourOpen}
+        onClose={() => setTourOpen(false)}
+        onFinish={() => { currentUserId().then((uid) => { if (uid) markOnboarded(uid); }).catch(() => {}); }}
+        steps={[
+          {
+            title: "Create a narrated video",
+            body: <>This form turns a story into a <b>narrated, subtitled video</b>. Fill it in, review the AI-generated plan, then render. Each field has a <b>?</b> icon for a quick reminder.</>,
+          },
+          {
+            title: "1 · Paste your manuscript",
+            body: <>This is the story itself. The agent splits it into shots and writes narration. Use <b># Chapter N</b> headings if you want chapter breaks. The <b>shorter the cleaner</b> — a few paragraphs works best for a first render.</>,
+            target: "v-manuscript",
+          },
+          {
+            title: "2 · Pick a visual style",
+            body: <>Choose a built-in style like <i>Ghibli-inspired</i> or <i>film noir</i>, or type your own. This shapes every frame. Save your favorites for reuse later.</>,
+            target: "v-style",
+          },
+          {
+            title: "3 · Aspect, language & voice",
+            body: <>Pick the video shape (<b>16:9</b> widescreen, <b>9:16</b> portrait, <b>1:1</b>), the narration <b>language</b>, and a saved <b>voice</b> — or upload a one-off voice sample (your own voice is fine).</>,
+            target: "v-voice",
+          },
+          {
+            title: "4 · Cast a face (optional)",
+            body: <>Add people's faces from your saved cast or upload a photo and the same character appears in shots. You must confirm you have the right to use a likeness.</>,
+            target: "v-cast",
+          },
+          {
+            title: "5 · Finishing touches",
+            body: <>Toggle a <b>music bed</b>, <b>keyframes</b>, or <b>continuity</b> between shots. Then choose whether to <b>review the plan</b> before rendering or <b>auto-accept</b> and let it run.</>,
+            target: "v-toggles",
+          },
+          {
+            title: "6 · Submit",
+            body: <>Hit <b>Plan & render</b>. You'll land on the video page where you approve the shot plan (if you chose manual review) and watch it render live.</>,
+            target: "v-submit",
+          },
+          {
+            title: "That's it!",
+            body: <>Replay this tutorial anytime from the button up top, or hover a <b>?</b> icon for a hint. Advanced options (model, orchestration, FPS…) live under <b>▸ Advanced</b>.</>,
+          },
+        ]}
+      />
+
+      <p style={{ color: "#666", marginTop: 8 }}>A story manuscript → a narrated, subtitled video. Renders on the home GPU; you can review the planned shots before it renders.</p>
       {usage && (() => {
         const atLimit = usage.videos_used >= usage.videos_limit;
         return (
@@ -176,16 +239,20 @@ export default function VideoNew() {
       })()}
 
       <form onSubmit={submit} style={{ display: "grid", gap: 0 }}>
-        <div>
-          <label style={label} htmlFor="manuscript">Manuscript</label>
+        <div id="v-manuscript">
+          <label style={label} htmlFor="manuscript">Manuscript
+            <Tip title="Manuscript">The full story you want turned into video. The agent breaks it into shots and writes narration. Use '# Chapter N' headings to split it into chapters.</Tip>
+          </label>
           <textarea id="manuscript" value={manuscript} onChange={(e) => setManuscript(e.target.value)}
             rows={5} required placeholder="A lighthouse keeper watches the first storm of autumn roll in over black water…"
             style={{ ...field, resize: "vertical" }} />
         </div>
 
         {/* Style brief with presets */}
-        <div style={{ marginTop: "1rem" }}>
-          <label style={label}>Style brief <span style={{ fontWeight: 400, color: "#888" }}>— pick a preset or type your own</span></label>
+        <div id="v-style" style={{ marginTop: "1rem" }}>
+          <label style={label}>Style brief <span style={{ fontWeight: 400, color: "#888" }}>— pick a preset or type your own</span>
+            <Tip title="Style brief">Describes how the video should look and feel — art direction for the whole video. Examples: 'Ghibli-inspired', 'film noir', 'warm watercolor storybook'.</Tip>
+          </label>
           <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
             <select value={BUILTIN_STYLES.includes(style) || saved.includes(style) ? style : ""}
               onChange={(e) => e.target.value && setStyle(e.target.value)} style={{ ...field, flex: 1, minWidth: 200 }}>
@@ -206,21 +273,27 @@ export default function VideoNew() {
           </div>
         </div>
 
-        <div style={row}>
+        <div id="v-voice" style={row}>
           <div style={cell}>
-            <label style={label}>Aspect</label>
+            <label style={label}>Aspect
+              <Tip title="Aspect ratio">Shape of the video: 16:9 widescreen for YouTube, 9:16 portrait for Shorts/Reels/TikTok, 1:1 for feed posts.</Tip>
+            </label>
             <select value={aspect} onChange={(e) => setAspect(e.target.value)} style={field}>
               <option>16:9</option><option>9:16</option><option>1:1</option>
             </select>
           </div>
           <div style={cell}>
-            <label style={label}>Narration language</label>
+            <label style={label}>Narration language
+              <Tip title="Narration language">The language the voiceover narration is spoken in. Defaults to English; Hindi and Bangla are supported.</Tip>
+            </label>
             <select value={language} onChange={(e) => setLanguage(e.target.value)} style={field}>
               <option value="en">English</option><option value="hi">हिन्दी · Hindi</option><option value="bn">বাংলা · Bangla</option>
             </select>
           </div>
           <div style={{ ...cell, minWidth: 200 }}>
-            <label style={label}>Narration voice</label>
+            <label style={label}>Narration voice
+              <Tip title="Narration voice">A saved cloned voice for the narration, or upload a one-off voice sample that's cloned for this video only. You need the right to use any voice.</Tip>
+            </label>
             <select value={voiceId} onChange={(e) => setVoiceId(e.target.value)} disabled={!!voiceFile} style={field}>
               <option value="">Default voice</option>
               {voices.map((v: any) => <option key={v.voice_id} value={v.voice_id}>{v.voice_id} ({v.language})</option>)}
@@ -240,8 +313,10 @@ export default function VideoNew() {
         </div>
 
         {/* Cast faces */}
-        <div style={{ marginTop: "1rem", border: "1px solid #e5e5e5", borderRadius: 8, padding: "0.9rem" }}>
-          <label style={label}>Cast a person's face <span style={{ fontWeight: 400, color: "#888" }}>— optional; a clear frontal photo appears in the shots</span></label>
+        <div id="v-cast" style={{ marginTop: "1rem", border: "1px solid #e5e5e5", borderRadius: 8, padding: "0.9rem" }}>
+          <label style={label}>Cast a person's face <span style={{ fontWeight: 400, color: "#888" }}>— optional; a clear frontal photo appears in the shots</span>
+            <Tip title="Cast a face">Reuse a face across your videos so the same character appears in every shot. Requires a clear frontal photo and your right to use that person's likeness.</Tip>
+          </label>
 
           {/* Saved cast library (character_ids) — no per-job consent (captured when saved). */}
           {libFaces.length > 0 && (
@@ -280,10 +355,16 @@ export default function VideoNew() {
         </div>
 
         {/* Toggles */}
-        <div style={{ display: "flex", gap: "1.3rem", flexWrap: "wrap", marginTop: "1.1rem" }}>
-          <label style={chk}><input type="checkbox" checked={music} onChange={(e) => setMusic(e.target.checked)} /> music bed</label>
-          <label style={chk}><input type="checkbox" checked={keyframes} onChange={(e) => setKeyframes(e.target.checked)} /> keyframes (image→video)</label>
-          <label style={chk}><input type="checkbox" checked={continuity} onChange={(e) => setContinuity(e.target.checked)} /> continuity chaining</label>
+        <div id="v-toggles" style={{ display: "flex", gap: "1.3rem", flexWrap: "wrap", marginTop: "1.1rem" }}>
+          <label style={chk}><input type="checkbox" checked={music} onChange={(e) => setMusic(e.target.checked)} /> music bed
+            <Tip title="Music bed">Adds a subtle background score underneath the narration to set the mood.</Tip>
+          </label>
+          <label style={chk}><input type="checkbox" checked={keyframes} onChange={(e) => setKeyframes(e.target.checked)} /> keyframes (image→video)
+            <Tip title="Keyframes">Animate a starting image into motion. Forces the deterministic driver (image-to-video mode).</Tip>
+          </label>
+          <label style={chk}><input type="checkbox" checked={continuity} onChange={(e) => setContinuity(e.target.checked)} /> continuity chaining
+            <Tip title="Continuity">Keeps characters, colors and scenes consistent across shots so the video feels like one continuous piece.</Tip>
+          </label>
         </div>
 
         {/* Review */}
@@ -292,12 +373,16 @@ export default function VideoNew() {
             <span><b>Review plan before render</b><br /><small style={{ color: "#777" }}>pause to approve/edit the planned shots</small></span></label>
           <label style={radio}><input type="radio" name="review" checked={review === "auto"} onChange={() => setReview("auto")} />
             <span><b>Skip review — auto-accept</b><br /><small style={{ color: "#777" }}>render everything the planner generates</small></span></label>
+          <span style={{ fontSize: ".8rem", color: "#888" }}>
+            <Tip title="Plan review">The agent drafts a shot-by-shot plan (visual prompts + narration). Manual review lets you tweak or regenerate it; auto skips straight to rendering.</Tip>
+          </span>
         </div>
 
         {/* Advanced */}
         <div style={{ marginTop: "1rem" }}>
           <button type="button" onClick={() => setShowAdvanced((v) => !v)} style={{ ...ghostBtn, border: "none", padding: 0, color: "#555" }}>
             {showAdvanced ? "▾" : "▸"} Advanced
+            <Tip title="Advanced options">Power-user settings: candidate count (best-of-N), crossfade, shots cap, FPS, the video model, orchestration mode and more. Defaults are sane for most videos.</Tip>
           </button>
           {showAdvanced && (
             <div style={{ marginTop: "0.6rem" }}>
@@ -335,9 +420,10 @@ export default function VideoNew() {
         </div>
 
         <div style={{ marginTop: "1.4rem", display: "flex", alignItems: "center", gap: 14 }}>
-          <button disabled={busy} style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 7, padding: "0.7rem 1.4rem", fontWeight: 600, cursor: "pointer", opacity: busy ? 0.6 : 1 }}>
+          <button id="v-submit" disabled={busy} style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 7, padding: "0.7rem 1.4rem", fontWeight: 600, cursor: "pointer", opacity: busy ? 0.6 : 1 }}>
             {busy ? "Submitting…" : "Plan & render"}
           </button>
+          <Tip title="Plan & render">Starts the pipeline: the agent plans shots, you approve, then it renders on the home GPU. You'll be taken to a live progress page.</Tip>
           {err && <span style={{ color: "#c5221f", fontSize: ".9rem" }}>{err}</span>}
         </div>
       </form>
