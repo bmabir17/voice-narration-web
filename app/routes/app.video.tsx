@@ -71,7 +71,7 @@ export default function VideoNew() {
   const [fps, setFps] = useState(16);
   const [plannerModel, setPlannerModel] = useState("");
   const [remoteLlm, setRemoteLlm] = useState(false);
-  const [videoModel, setVideoModel] = useState("ltx2_t2v");
+  const [videoModel, setVideoModel] = useState("minimax_h3_t2v");
   const [mode, setMode] = useState<"deterministic" | "agentic">("agentic");
   const [quality, setQuality] = useState(false);
   const [distill, setDistill] = useState(1.0);

@@ -70,6 +70,13 @@ export interface AdminOverview {
     }>;
     counts: { queued: number; processing: number; completed: number; failed: number };
   };
+  video_jobs: {
+    recent: Array<{
+      id: string; status: string; stage: string | null; language: string; created_at: string;
+      user_id: string | null; email: string | null;
+    }>;
+    counts: { queued: number; processing: number; completed: number; failed: number };
+  };
   billing: {
     total_users: number;
     by_plan: Record<string, number>;

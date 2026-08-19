@@ -29,7 +29,7 @@ export default function Admin() {
   }
   if (!data) return <main style={{ padding: "2rem" }}><p>Loading…</p></main>;
 
-  const { worker_and_queue: wq, jobs, billing, redis_estimate: rx } = data;
+  const { worker_and_queue: wq, jobs, video_jobs: vjobs, billing, redis_estimate: rx } = data;
   const stale = wq.snapshot_age_sec == null || wq.snapshot_age_sec > 15 * 60;
 
   return (
@@ -77,6 +77,29 @@ export default function Admin() {
                 <td><code>{j.id}</code></td>
                 <td title={j.user_id ?? ""}>{j.email ?? (j.user_id ? <em>unknown</em> : "—")}</td>
                 <td>{j.status}</td><td>{j.voice_id}</td>
+                <td>{new Date(j.created_at).toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Section>
+
+      <Section title="Video jobs">
+        <Grid>
+          <Stat label="Queued" value={String(vjobs.counts.queued)} />
+          <Stat label="Processing" value={String(vjobs.counts.processing)} color="#1565c0" />
+          <Stat label="Completed" value={String(vjobs.counts.completed)} color="#2e7d32" />
+          <Stat label="Failed" value={String(vjobs.counts.failed)} color={vjobs.counts.failed ? "#c62828" : "#666"} />
+        </Grid>
+        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "0.8rem", fontSize: "0.85rem" }}>
+          <thead><tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
+            <th>Job</th><th>User</th><th>Status</th><th>Stage</th><th>Created</th></tr></thead>
+          <tbody>
+            {vjobs.recent.map((j) => (
+              <tr key={j.id} style={{ borderBottom: "1px solid #f2f2f2" }}>
+                <td><code>{j.id}</code></td>
+                <td title={j.user_id ?? ""}>{j.email ?? (j.user_id ? <em>unknown</em> : "—")}</td>
+                <td>{j.status}</td><td>{j.stage ?? "—"}</td>
                 <td>{new Date(j.created_at).toLocaleString()}</td>
               </tr>
             ))}
