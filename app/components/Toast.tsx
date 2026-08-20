@@ -19,7 +19,7 @@ export function Toasts() {
     push = (text) => {
       const id = ++idRef.current;
       setList((v) => [...v, { id, text }]);
-      setTimeout(() => setList((v) => v.filter((t) => t.id !== id)), 6000);
+      setTimeout(() => setList((v) => v.filter((t) => t.id !== id)), 12000);
     };
     return () => { push = null; };
   }, []);
