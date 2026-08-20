@@ -7,6 +7,14 @@ import { useNavigate } from "react-router";
 import { supabase } from "~/lib/supabase";
 import { notifications, type NotificationRow } from "~/lib/api";
 
+// On mobile the nav wraps so the bell can sit near the left edge; an absolutely-positioned dropdown
+// anchored `right: 0` then overflows off-screen. Under 767px we switch the panel to fixed + viewport
+// fitted (centered with side margins) so nothing gets cut off.
+const BELL_CSS = `
+  @media (max-width:767px){
+    .va-notif-panel{position:fixed;top:calc(1rem + 8px);left:8px;right:8px;width:auto;max-width:none}
+  }`;
+
 const TYPE_META: Record<NotificationRow["type"], { color: string; icon: string; label: string }> = {
   plan_ready: { color: "#8a6d00", icon: "🗂", label: "Plan review" },
   video_ready: { color: "#137333", icon: "✅", label: "Ready" },
@@ -64,6 +72,7 @@ export function NotificationsBell() {
 
   return (
     <div ref={boxRef} style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+      <style>{BELL_CSS}</style>
       <button
         aria-label={`Notifications${unread ? ` (${unread} unread)` : ""}`}
         aria-expanded={open}
@@ -93,6 +102,7 @@ export function NotificationsBell() {
           role="menu"
           onMouseEnter={openSoon}
           onMouseLeave={closeSoon}
+          className="va-notif-panel"
           style={{
             position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 80,
             width: 330, maxWidth: "calc(100vw - 32px)", background: "#fff",
