@@ -491,7 +491,7 @@ export default function VideoRun() {
             {job.status === "awaiting_plan" && job.plan && (
               <section id="v-review" style={{ border: `1px solid ${ACCENT}`, borderRadius: 10, padding: "1rem", margin: "1rem 0" }}>
                 <h2 style={{ marginTop: 0 }}>Review the plan</h2>
-                {job.plan.brief?.logline && <p style={{ color: "#444" }}><b>Logline:</b> {job.plan.brief.logline}</p>}
+                {job.plan.brief?.logline && <p title={job.plan.brief.logline} style={{ color: "#444", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><b>Logline:</b> {job.plan.brief.logline}</p>}
                 <div style={{ display: "grid", gap: "0.8rem" }}>
                   {(editShots ?? []).map((s, i) => (
                     <div key={i} style={{ border: "1px solid #e5e5e5", borderRadius: 8, padding: "0.7rem" }}>
@@ -741,7 +741,7 @@ export default function VideoRun() {
               return (
                 <section style={{ border: "1px solid #e5e5e5", borderRadius: 8, padding: "0.8rem 1rem", marginTop: "0.8rem" }}>
                   <h3 style={{ margin: 0, fontSize: ".9rem", color: "#333" }}>Creative brief</h3>
-                  <p style={{ margin: ".4rem 0 0", fontSize: ".85rem", color: "#444" }}><b>Logline:</b> {b?.logline ?? "—"}</p>
+                  <p title={b?.logline ?? "—"} style={{ margin: ".4rem 0 0", fontSize: ".85rem", color: "#444", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><b>Logline:</b> {b?.logline ?? "—"}</p>
                   {b?.tone ? <p style={{ margin: ".2rem 0 0", fontSize: ".85rem", color: "#444" }}><b>Tone:</b> {b.tone}</p> : null}
                   {b?.visual_style ? <p style={{ margin: ".2rem 0 0", fontSize: ".85rem", color: "#444" }}><b>Visual style:</b> {b.visual_style}</p> : null}
                   {b?.palette ? <p style={{ margin: ".2rem 0 0", fontSize: ".85rem", color: "#444" }}><b>Palette:</b> {b.palette}</p> : null}
