@@ -242,6 +242,13 @@ export const api = {
   }) {
     return request("/v1-voices", { method: "POST", body: JSON.stringify(input) });
   },
+
+  // Web Push subscriptions (true OS notifications even when the tab is closed).
+  pushPublicKey: () => request<{ publicKey: string }>("/v1-push"),
+  pushSubscribe: (input: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
+    request<{ ok: true }>("/v1-push", { method: "POST", body: JSON.stringify(input) }),
+  pushUnsubscribe: (endpoint: string) =>
+    request<{ ok: true }>("/v1-push", { method: "DELETE", body: JSON.stringify({ endpoint }) }),
 };
 
 // Upload an ad-hoc cast face straight to the private character-refs bucket (RLS-scoped by user_id

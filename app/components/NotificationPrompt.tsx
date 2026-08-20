@@ -2,12 +2,55 @@
 // permission is "default" until the user decides) so that new in-app notifications also pop as
 // system/OS notifications. A localStorage flag stops the banner from nagging after the user
 // responds (the browser itself remembers the granted/denied choice per origin).
+//
+// When the user enables notifications we also register the service worker and subscribe to Web Push
+// (VAPID via /v1-push) so OS notifications arrive even when the tab/app is closed.
 import { useEffect, useState } from "react";
+import { api } from "~/lib/api";
 
 const SEEN_KEY = "vn_notif_prompt_seen";
 
 export function notificationGranted(): boolean {
   return typeof Notification !== "undefined" && Notification.permission === "granted";
+}
+
+// Register sw.js and subscribe to web push for this browser, then sync the subscription with the
+// server. Called after the user grants permission. Best-effort: failures here never block the app.
+export async function enableWebPush(): Promise<boolean> {
+  try {
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+      return false;
+    }
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    const { publicKey } = await api.pushPublicKey();
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: b64urlToUint8Array(publicKey),
+    });
+    await api.pushSubscribe({
+      endpoint: sub.endpoint,
+      keys: { p256dh: b64urlSafe(sub.getKey("p256dh")), auth: b64urlSafe(sub.getKey("auth")) },
+    });
+    return true;
+  } catch {
+    return false; // e.g. iOS PWA-only, push server unreachable, permission quirk
+  }
+}
+
+function b64urlToUint8Array(b64: string): Uint8Array {
+  const s = b64.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = s.length % 4 ? "=".repeat(4 - (s.length % 4)) : "";
+  const bin = atob(s + pad);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+function b64urlSafe(buf: ArrayBuffer | null): string {
+  if (!buf) return "";
+  const bytes = new Uint8Array(buf);
+  let bin = "";
+  for (const x of bytes) bin += String.fromCharCode(x);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 export function NotificationPrompt() {
@@ -26,6 +69,7 @@ export function NotificationPrompt() {
     try {
       await Notification.requestPermission();
     } catch { /* requestPermission can reject on some engines */ }
+    if (Notification.permission === "granted") await enableWebPush();
     localStorage.setItem(SEEN_KEY, "1");
     setVisible(false);
   }
