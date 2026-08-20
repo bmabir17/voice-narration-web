@@ -335,3 +335,26 @@ export async function uploadReferenceAudio(userId: string, voiceId: string, file
   const sha256 = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
   return { ref, sha256 };
 }
+
+// --- In-app notifications (bell) ---------------------------------------------------------------
+// Rows live in public.notifications; RLS lets the owner read + mark their own. We read/update via the
+// supabase client directly (realtime also streams inserts so the bell is instant). The worker inserts.
+export interface NotificationRow {
+  id: string;
+  type: "plan_ready" | "video_ready" | "video_failed";
+  title: string;
+  body: string | null;
+  job_id: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export const notifications = {
+  list: (limit = 20) =>
+    supabase.from("notifications").select("*").order("created_at", { ascending: false }).limit(limit),
+  unreadCount: () =>
+    supabase.from("notifications").select("id", { count: "exact", head: true })
+      .eq("is_read", false),
+  markRead: (id: string) => supabase.from("notifications").update({ is_read: true }).eq("id", id),
+  markAllRead: () => supabase.from("notifications").update({ is_read: true }).eq("is_read", false),
+};

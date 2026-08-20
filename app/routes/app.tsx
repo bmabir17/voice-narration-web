@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, Outlet, useNavigate } from "react-router";
 import { supabase, currentSession } from "~/lib/supabase";
 import { NavShell, navCta, navLink, navLinkBtn } from "~/components/NavBar";
+import { NotificationsBell } from "~/components/NotificationsBell";
 import { api } from "~/lib/api";
 
 // Authed layout + client-side route guard (the app routes are non-indexed; the 404.html SPA
@@ -37,6 +38,7 @@ export default function AppLayout() {
         <Link to="/app/billing" style={navLink}>Billing</Link>
         <Link to="/app/support" style={navLink}>Support</Link>
         {isAdmin && <Link to="/app/admin" style={navLink}>Admin</Link>}
+        <NotificationsBell />
         <button onClick={() => supabase.auth.signOut().then(() => navigate("/"))} style={navLinkBtn}>
           Sign out
         </button>
