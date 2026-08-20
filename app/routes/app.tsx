@@ -4,6 +4,7 @@ import { supabase, currentSession } from "~/lib/supabase";
 import { NavShell, navCta, navLink, navLinkBtn } from "~/components/NavBar";
 import { NotificationsBell } from "~/components/NotificationsBell";
 import { NotificationPrompt } from "~/components/NotificationPrompt";
+import { Toasts } from "~/components/Toast";
 import { api } from "~/lib/api";
 
 // Authed layout + client-side route guard (the app routes are non-indexed; the 404.html SPA
@@ -47,6 +48,7 @@ export default function AppLayout() {
       </NavShell>
       <NotificationPrompt />
       <Outlet />
+      <Toasts />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { supabase } from "~/lib/supabase";
 import { DisclosureBadge } from "~/components/DisclosureBadge";
 import { Tip } from "~/components/Tooltip";
 import { GuidedTour } from "~/components/GuidedTour";
+import { toast } from "~/components/Toast";
 import { currentUserId, hasOnboarded, markOnboarded } from "~/lib/onboarding";
 
 const ACCENT = "#1a73e8";
@@ -169,6 +170,7 @@ export default function VideoNew() {
         idempotency_key: crypto.randomUUID(),
       };
       const { job_id } = await api.submitVideoJob(input);
+      toast("Your video will start processing shortly — you'll be notified by email/push notification.");
       navigate(`/app/video/${job_id}`);
     } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
   }
