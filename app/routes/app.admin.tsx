@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { api, type AdminOverview } from "~/lib/api";
+import { toast } from "~/components/Toast";
 
+const ACCENT = "#1a73e8";
 const STATUS_COLOR: Record<string, string> = {
   NORMAL: "#2e7d32", RECOVERING: "#ef6c00", FAILOVER: "#c62828",
 };
@@ -9,12 +11,24 @@ const STATUS_COLOR: Record<string, string> = {
 export default function Admin() {
   const [data, setData] = useState<AdminOverview | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
 
   function load() {
     setErr(null);
     api.admin().then(setData).catch((e) => setErr(e.message));
   }
   useEffect(load, []);
+
+  async function testNotification() {
+    setTesting(true); setTestResult(null);
+    try {
+      const r = await api.adminTestNotification();
+      setTestResult(`Sent #${r.id.slice(0, 8)} to ${r.user_id.slice(0, 8)} · ${r.push_subscriptions} push sub(s) attached. Check the bell & your OS.`);
+      toast("Test notification sent — check the bell and your device.");
+    } catch (e: any) { setTestResult(`Failed: ${e.message}`); }
+    finally { setTesting(false); }
+  }
 
   if (err) {
     const forbidden = err === "forbidden";
@@ -46,6 +60,20 @@ export default function Admin() {
         Snapshot {wq.snapshot_age_sec == null ? "never written" : `${wq.snapshot_age_sec}s old`}
         {stale && " ⚠️ (failover-tick may be down)"} · reads Postgres only (no Redis cost)
       </p>
+
+      <Section title="Notifications (test)">
+        <p style={{ fontSize: "0.8rem", color: "#666", marginTop: "0.5rem" }}>
+          Inserts a real notification for your admin account — it shows in the bell (realtime) and, if
+          you have web-push enabled, delivers an OS notification even with the tab closed.
+        </p>
+        <button onClick={testNotification} disabled={testing} style={{
+          padding: "0.5rem 1rem", background: testing ? "#ccc" : ACCENT, color: "#fff", border: "none",
+          borderRadius: 7, fontWeight: 600, cursor: testing ? "default" : "pointer",
+        }}>
+          {testing ? "Sending…" : "Send test notification"}
+        </button>
+        {testResult && <p style={{ fontSize: "0.8rem", color: "#333", marginTop: "0.6rem" }}>{testResult}</p>}
+      </Section>
 
       <Section title="Worker & queue">
         <Grid>

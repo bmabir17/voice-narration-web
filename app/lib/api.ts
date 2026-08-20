@@ -189,6 +189,10 @@ export const api = {
   // Cheap admin-gate probe (same allowlist): 200 {admin:true} for operators, 403 for everyone else.
   adminCheck: () => request<{ admin: true }>("/v1-admin/me"),
 
+  adminTestNotification: (input?: { user_id?: string; type?: string; title?: string; body?: string }) =>
+    request<{ id: string; user_id: string; type: string; title: string; body: string; created_at: string; push_subscriptions: number }>(
+      "/v1-admin/test-notification", { method: "POST", body: JSON.stringify(input ?? {}) }),
+
   // Admin: user + subscription management (same allowlist gate).
   adminUsers: {
     list: (q?: string) =>
