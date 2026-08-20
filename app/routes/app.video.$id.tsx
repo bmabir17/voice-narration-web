@@ -25,6 +25,21 @@ const SPINNER_CSS = `@keyframes va-spin{to{transform:rotate(360deg)}}` +
   `border-radius:50%;animation:va-spin .7s linear infinite;vertical-align:-2px}` +
   `@media (prefers-reduced-motion: reduce){.va-spinner{animation-duration:2s}}`;
 
+// Mobile responsiveness: on small screens the "Your videos" column becomes a hidden left drawer,
+// opened by a toggle button + dimmed backdrop; on desktop it stays a static sticky sidebar.
+const DRAWER_CSS = `
+  .va-videos-drawer{flex-shrink:0;position:sticky;top:70px;width:250px}
+  .va-mobile-toggle{display:none}
+  .va-videos-backdrop{display:none}
+  @media (max-width:767px){
+    .va-videos-drawer{position:fixed;top:0;left:0;bottom:0;width:min(82vw,320px);z-index:70;
+      background:#fff;padding:1.2rem 1.25rem;overflow-y:auto;border-right:1px solid #eee;
+      box-shadow:0 0 30px rgba(0,0,0,.25);transform:translateX(-110%);transition:transform .25s ease}
+    .va-videos-drawer.open{transform:translateX(0)}
+    .va-mobile-toggle{display:inline-flex}
+    .va-videos-backdrop{display:block}
+  }`;
+
 function fmtDur(s: number): string {
   s = Math.round(s);
   const m = Math.floor(s / 60), sec = s % 60;
@@ -80,6 +95,8 @@ export default function VideoRun() {
   const seen = useRef<Set<number>>(new Set());
   // First-login guided tour
   const [tourOpen, setTourOpen] = useState(false);
+  // Mobile drawer: the "Your videos" column is hidden behind a toggle on small screens.
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     currentUserId().then((uid) => {
@@ -340,14 +357,29 @@ export default function VideoRun() {
   })();
 
   return (
-    <div style={{ display: "flex", gap: 22, maxWidth: 1140, margin: "0 auto", padding: "1.5rem 1.25rem", alignItems: "flex-start" }}>
-      <style>{SPINNER_CSS}</style>
+    <div>
+      <style>{SPINNER_CSS}{DRAWER_CSS}</style>
 
-      {/* Left column — past videos */}
-      <aside style={{ width: 250, flexShrink: 0, position: "sticky", top: 70 }}>
+      {/* Mobile-only toggle — opens the "Your videos" drawer (hidden on desktop via CSS). */}
+      <div style={{ maxWidth: 1140, margin: "0 auto", padding: "1rem 1.25rem 0" }}>
+        <button className="va-mobile-toggle" onClick={() => setDrawerOpen(true)} style={{
+          alignItems: "center", gap: 7, border: "1px solid #d1d5db", background: "#fff", borderRadius: 7,
+          padding: "0.4rem 0.85rem", cursor: "pointer", fontSize: ".85rem", fontWeight: 600, color: "#374151",
+        }}>☰ Your videos</button>
+      </div>
+
+      {/* Mobile drawer backdrop (desktop hides via CSS, and it only renders while open). */}
+      {drawerOpen && (
+        <div className="va-videos-backdrop" onClick={() => setDrawerOpen(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", zIndex: 60 }} />
+      )}
+
+      <div style={{ display: "flex", gap: 22, maxWidth: 1140, margin: "0 auto", padding: "1.5rem 1.25rem", alignItems: "flex-start" }}>
+      {/* Left column — past videos (sticky sidebar on desktop; slide-in drawer on mobile) */}
+      <aside className={`va-videos-drawer${drawerOpen ? " open" : ""}`}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <b style={{ fontSize: ".9rem" }}>Your videos</b>
-          <Link to="/app/video" style={{ color: ACCENT, fontSize: ".85rem" }}>+ New</Link>
+          <Link to="/app/video" onClick={() => setDrawerOpen(false)} style={{ color: ACCENT, fontSize: ".85rem" }}>+ New</Link>
         </div>
         <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 }}>
           {jobs.map((j) => {
@@ -367,7 +399,7 @@ export default function VideoRun() {
                     {active && <span className="va-spinner" style={{ width: 9, height: 9, borderWidth: 2 }} />}{j.status}
                   </span>
                   <span style={{ display: "flex", gap: 6 }}>
-                    <button onClick={() => navigate(`/app/video/${j.id}`)} disabled={current} style={miniBtn(current)}>view</button>
+                    <button onClick={() => { setDrawerOpen(false); navigate(`/app/video/${j.id}`); }} disabled={current} style={miniBtn(current)}>view</button>
                     <button onClick={() => del(j.id)} disabled={deleting === j.id}
                       style={{ ...miniBtn(false), color: "#c5221f", borderColor: "#e6c0c0" }}>
                       {deleting === j.id ? "…" : "delete"}
@@ -774,6 +806,7 @@ export default function VideoRun() {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }
