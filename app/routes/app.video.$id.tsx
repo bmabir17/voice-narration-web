@@ -356,7 +356,7 @@ export default function VideoRun() {
             return (
               <li key={j.id} style={{
                 border: `1px solid ${current ? ACCENT : "#e5e5e5"}`, borderRadius: 8, padding: "0.5rem 0.6rem",
-                background: current ? "#eef4fe" : "#fff",
+                background: current ? "#eef4fe" : "#fff", minWidth: 0, overflow: "hidden",
               }}>
                 <div title={j.id} style={{ fontSize: ".8rem", color: "#222", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {jobLogline(j) ?? <em style={{ color: "#999", fontWeight: 400 }}>…</em>}
