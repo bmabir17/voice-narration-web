@@ -15,6 +15,24 @@ const BELL_CSS = `
     .va-notif-panel{position:fixed;top:calc(1rem + 8px);left:8px;right:8px;width:auto;max-width:none}
   }`;
 
+// Raise an OS-level system notification (Web Notifications API) for a newly-created in-app
+// notification, so the user gets an alert on their PC/phone even if the tab is in the background.
+// Clicking the OS notification opens the linked video. No-op when permission isn't granted.
+function osNotify(n: NotificationRow) {
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+  try {
+    const os = new Notification(n.title, {
+      body: n.body ?? undefined,
+      tag: n.id, // replaces an earlier OS notification with the same id
+    });
+    os.onclick = () => {
+      os.close();
+      window.focus();
+      window.location.href = n.job_id ? `/app/video/${n.job_id}` : "/app/video";
+    };
+  } catch { /* some engines throw on constructor failure — in-app list still covers it */ }
+}
+
 const TYPE_META: Record<NotificationRow["type"], { color: string; icon: string; label: string }> = {
   plan_ready: { color: "#8a6d00", icon: "🗂", label: "Plan review" },
   video_ready: { color: "#137333", icon: "✅", label: "Ready" },
@@ -44,7 +62,7 @@ export function NotificationsBell() {
     notifications.list().then(({ data, error }) => { if (alive && !error) setItems(data ?? []); });
     const ch = supabase.channel("notifications")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" },
-        (p: any) => { const n = p.new as NotificationRow; setItems((v) => [n, ...v].slice(0, 50)); })
+        (p: any) => { const n = p.new as NotificationRow; setItems((v) => [n, ...v].slice(0, 50)); osNotify(n); })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications" },
         (p: any) => { const n = p.new as NotificationRow; setItems((v) => v.map((x) => x.id === n.id ? n : x)); })
       .subscribe();

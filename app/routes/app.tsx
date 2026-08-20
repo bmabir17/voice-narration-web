@@ -3,6 +3,7 @@ import { Link, Outlet, useNavigate } from "react-router";
 import { supabase, currentSession } from "~/lib/supabase";
 import { NavShell, navCta, navLink, navLinkBtn } from "~/components/NavBar";
 import { NotificationsBell } from "~/components/NotificationsBell";
+import { NotificationPrompt } from "~/components/NotificationPrompt";
 import { api } from "~/lib/api";
 
 // Authed layout + client-side route guard (the app routes are non-indexed; the 404.html SPA
@@ -44,6 +45,7 @@ export default function AppLayout() {
         </button>
         <Link to="/app/video" style={navCta}>New video</Link>
       </NavShell>
+      <NotificationPrompt />
       <Outlet />
     </div>
   );
