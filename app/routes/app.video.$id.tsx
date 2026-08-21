@@ -82,6 +82,7 @@ export default function VideoRun() {
   const [candUrls, setCandUrls] = useState<Record<string, string>>({});      // candidate shot_key → URL
   // Which edit is in flight (drives the per-button spinner). Cleared when the worker leaves "editing".
   const [pending, setPending] = useState<{ kind: "regen"; shot: number } | { kind: "reasm" } | null>(null);
+  const [restarting, setRestarting] = useState(false);
   // Editable per-shot regenerate options (prompt/motion/count/quality/distill) — mirrors the local
   // UI's collapsed "regenerate options" panel; keyed by shot index.
   const [regenOpts, setRegenOpts] = useState<Record<number, {
@@ -324,6 +325,15 @@ export default function VideoRun() {
     } catch (e: any) { setErr(e.message); } finally { setDeleting(null); }
   }
 
+  async function restart() {
+    if (!confirm("Restart this failed video? The pipeline will re-run from the beginning.")) return;
+    setRestarting(true); setErr(null);
+    try {
+      await api.restartVideoJob(id);
+      await refetch();
+    } catch (e: any) { setErr(e.message); } finally { setRestarting(false); }
+  }
+
   const activeIdx = job ? (STAGE_INDEX[job.status] ?? 0) : 0;
   const failed = job?.status === "failed" || job?.status === "cancelled";
   const running = !!job && !TERMINAL.has(job.status);
@@ -518,6 +528,12 @@ export default function VideoRun() {
 
             {err && <p style={{ color: "#c5221f" }}>{err}</p>}
             {failed && <p style={{ color: "#c5221f" }}>{job.status === "cancelled" ? "Cancelled." : `Failed: ${job.error ?? "unknown error"}`}</p>}
+            {failed && (
+              <button disabled={restarting} onClick={restart}
+                style={{ background: "#fff", color: ACCENT, border: `1px solid ${ACCENT}`, borderRadius: 7, padding: "0.5rem 1rem", fontWeight: 600, cursor: restarting ? "default" : "pointer", display: "inline-flex", alignItems: "center", gap: 6, marginBottom: "1rem" }}>
+                {restarting ? <><span className="va-spinner" /> Restarting…</> : "↻ Restart"}
+              </button>
+            )}
 
             {/* HITL plan review */}
             {job.status === "awaiting_plan" && job.plan && (

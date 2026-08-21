@@ -167,6 +167,8 @@ export const api = {
   }),
   reassembleVideo: (id: string, selections: Record<number, number>) =>
     request<{ ok: boolean; edit_id: string }>(`/v1-video-jobs/${id}/reassemble`, { method: "POST", body: JSON.stringify({ selections }) }),
+  restartVideoJob: (id: string) =>
+    request<{ ok: boolean; status: string }>(`/v1-video-jobs/${id}/restart`, { method: "POST" }),
   deleteVideoJob: (id: string) => request<{ ok: boolean }>(`/v1-video-jobs/${id}`, { method: "DELETE" }),
   // Saved-face library (cast reusable across video jobs).
   listFaces: () => request<{ faces: FaceRow[] }>("/v1-faces"),
