@@ -326,7 +326,7 @@ export default function VideoRun() {
   }
 
   async function restart() {
-    if (!confirm("Restart this failed video? The pipeline will re-run from the beginning.")) return;
+    if (!confirm("Restart this video? It will resume from the last successfully rendered shot.")) return;
     setRestarting(true); setErr(null);
     try {
       await api.restartVideoJob(id);
